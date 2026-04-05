@@ -1,0 +1,5 @@
+build/
+cmaper
+*.o
+.DS_Store
+.cmaper/
