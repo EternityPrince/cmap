@@ -221,6 +221,7 @@ static cmaper_err_t cmaper_scan_process_wait_loop(
     int *stderr_fd,
     int heartbeat_seconds,
     const char *heartbeat_label,
+    int hard_timeout_seconds,
     cmaper_logger_t *logger,
     cmaper_scan_process_buffer_t *stdout_buffer,
     cmaper_scan_process_buffer_t *stderr_buffer,
@@ -289,19 +290,37 @@ static cmaper_err_t cmaper_scan_process_wait_loop(
             }
         }
 
-        if (child_running && heartbeat_seconds > 0) {
-            long long elapsed_ms = 0;
-
+        if (child_running) {
             now_ms = cmaper_scan_now_ms();
-            if (cmaper_scan_heartbeat_should_emit(&heartbeat, now_ms, &elapsed_ms)) {
-                const char *label = heartbeat_label != NULL ? heartbeat_label : "scan/process";
-                cmaper_log(
-                    logger,
-                    CMAPER_LOG_WAIT,
-                    "%s: still running after %llds",
-                    label,
-                    elapsed_ms / 1000LL
-                );
+
+            if (hard_timeout_seconds > 0
+                && (now_ms - heartbeat.started_ms) >= ((long long) hard_timeout_seconds * 1000LL)) {
+                if (logger != NULL) {
+                    const char *label = heartbeat_label != NULL ? heartbeat_label : "scan/process";
+                    cmaper_log(
+                        logger,
+                        CMAPER_LOG_WARN,
+                        "%s: hard timeout reached (%ds), terminating process",
+                        label,
+                        hard_timeout_seconds
+                    );
+                }
+                (void) kill(child_pid, SIGKILL);
+                return CMAPER_ERR_IO;
+            }
+
+            if (heartbeat_seconds > 0) {
+                long long elapsed_ms = 0;
+                if (cmaper_scan_heartbeat_should_emit(&heartbeat, now_ms, &elapsed_ms)) {
+                    const char *label = heartbeat_label != NULL ? heartbeat_label : "scan/process";
+                    cmaper_log(
+                        logger,
+                        CMAPER_LOG_WAIT,
+                        "%s: still running after %llds",
+                        label,
+                        elapsed_ms / 1000LL
+                    );
+                }
             }
         }
 
@@ -399,6 +418,7 @@ cmaper_err_t cmaper_scan_process_run(
         &stderr_pipe[0],
         request->heartbeat_seconds,
         request->heartbeat_label,
+        request->hard_timeout_seconds,
         logger,
         &stdout_buffer,
         &stderr_buffer,

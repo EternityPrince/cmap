@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#define CMAPER_SCAN_SUDO_BIN "/usr/bin/sudo"
+
 static cmaper_err_t cmaper_scan_command_push_arg(
     cmaper_scan_command_t *command,
     const char *value,
@@ -205,38 +207,8 @@ cmaper_err_t cmaper_scan_discovery_plan_build(
         return CMAPER_OK;
     }
 
-    if (discovery_plan->transport != CMAPER_DISCOVERY_TRANSPORT_SYN) {
-        discovery_plan->spoof_suppression = CMAPER_SPOOF_SUPPRESS_UNPRIVILEGED;
-        return CMAPER_OK;
-    }
-
-    if (identity->representative_is_loopback) {
-        discovery_plan->spoof_suppression = CMAPER_SPOOF_SUPPRESS_LOOPBACK;
-        return CMAPER_OK;
-    }
-
-    discovery_plan->spoof_applied = true;
-    discovery_plan->spoof_suppression = CMAPER_SPOOF_SUPPRESS_NONE;
-    if (identity->has_spoofed_mac) {
-        if (snprintf(discovery_plan->spoof_value,
-                sizeof(discovery_plan->spoof_value),
-                "%s",
-                identity->spoofed_mac) >= (int) sizeof(discovery_plan->spoof_value)) {
-            cmaper_scan_command_diag_setf(
-                diag,
-                "--spoof-mac",
-                "spoof value exceeds internal buffer limit"
-            );
-            return CMAPER_ERR_IO;
-        }
-    } else {
-        cmaper_scan_command_diag_setf(
-            diag,
-            "--spoof-mac",
-            "spoof mode is enabled but spoof value is unavailable"
-        );
-        return CMAPER_ERR_CLI_USAGE;
-    }
+    (void) identity;
+    discovery_plan->spoof_suppression = CMAPER_SPOOF_SUPPRESS_DISCOVERY_PHASE;
 
     return CMAPER_OK;
 }
@@ -257,6 +229,13 @@ cmaper_err_t cmaper_scan_command_build_discovery(
 
     cmaper_scan_command_diag_clear(diag);
     cmaper_scan_command_init(command);
+
+    if (discovery_plan->transport == CMAPER_DISCOVERY_TRANSPORT_SYN) {
+        rc = cmaper_scan_command_push_arg(command, CMAPER_SCAN_SUDO_BIN, diag);
+        if (rc != CMAPER_OK) {
+            return rc;
+        }
+    }
 
     rc = cmaper_scan_command_push_arg(
         command,
@@ -392,6 +371,8 @@ const char *cmaper_spoof_suppression_name(cmaper_spoof_suppression_t suppression
         return "unprivileged";
     case CMAPER_SPOOF_SUPPRESS_LOOPBACK:
         return "loopback";
+    case CMAPER_SPOOF_SUPPRESS_DISCOVERY_PHASE:
+        return "discovery-phase";
     case CMAPER_SPOOF_SUPPRESS_NONE:
         break;
     }

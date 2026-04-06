@@ -11,6 +11,7 @@ void cmaper_scan_options_init(cmaper_scan_options_t *options) {
     options->target = NULL;
     options->profile = CMAPER_SCAN_PROFILE_UNSET;
     options->exact_ports = NULL;
+    options->all_ports = CMAPER_SCAN_TOGGLE_UNSET;
     options->no_ping = CMAPER_SCAN_TOGGLE_UNSET;
     options->has_timing_template = false;
     options->timing_template = 0;

@@ -164,6 +164,8 @@ void cmaper_cli_print_help(FILE *stream, const char *program_name, const char *t
         "      --profile <lvl>        Scan profile: low|mid|high (default: mid)\n"
         "      --ports <expr>         Exact port expression override\n"
         "      --exact-ports <expr>   Alias for '--ports'\n"
+        "      --all-ports            Scan full TCP port range (1-65535) in detail phase\n"
+        "      --no-all-ports         Disable full-range detail scan (default)\n"
         "      --no-ping              Disable host discovery ping checks (-Pn)\n"
         "      --ping                 Force ping-based host discovery when applicable\n"
         "      --timing <0..5>        Timing template override\n"

@@ -7,6 +7,7 @@
 #include "cmaper/platform/fs.h"
 #include "cmaper/snapshot/schema.h"
 #include "cmaper/snapshot/write.h"
+#include "cmaper/snapshot/internal/sqlite_internal.h"
 
 static const char *cmaper_snapshot_spoof_mode_name(cmaper_scan_spoof_mac_mode_t mode) {
     switch (mode) {
@@ -32,111 +33,6 @@ static void cmaper_snapshot_diag_set_sqlite(
 ) {
     const char *message = db != NULL ? sqlite3_errmsg(db) : "sqlite error";
     cmaper_snapshot_diag_setf(diag, field, "%s", message);
-}
-
-static cmaper_err_t cmaper_snapshot_prepare(
-    sqlite3 *db,
-    const char *sql,
-    sqlite3_stmt **out_stmt
-) {
-    int rc;
-
-    if (db == NULL || sql == NULL || out_stmt == NULL) {
-        return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    *out_stmt = NULL;
-    rc = sqlite3_prepare_v2(db, sql, -1, out_stmt, NULL);
-    if (rc != SQLITE_OK) {
-        return CMAPER_ERR_IO;
-    }
-
-    return CMAPER_OK;
-}
-
-static cmaper_err_t cmaper_snapshot_bind_text(
-    sqlite3_stmt *stmt,
-    int index,
-    const char *value
-) {
-    int rc;
-
-    if (stmt == NULL || value == NULL) {
-        return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    rc = sqlite3_bind_text(stmt, index, value, -1, SQLITE_TRANSIENT);
-    if (rc != SQLITE_OK) {
-        return CMAPER_ERR_IO;
-    }
-
-    return CMAPER_OK;
-}
-
-static cmaper_err_t cmaper_snapshot_bind_text_or_null(
-    sqlite3_stmt *stmt,
-    int index,
-    const char *value
-) {
-    int rc;
-
-    if (stmt == NULL) {
-        return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    if (value == NULL || value[0] == '\0') {
-        rc = sqlite3_bind_null(stmt, index);
-    } else {
-        rc = sqlite3_bind_text(stmt, index, value, -1, SQLITE_TRANSIENT);
-    }
-    if (rc != SQLITE_OK) {
-        return CMAPER_ERR_IO;
-    }
-
-    return CMAPER_OK;
-}
-
-static cmaper_err_t cmaper_snapshot_bind_int(
-    sqlite3_stmt *stmt,
-    int index,
-    int value
-) {
-    int rc;
-
-    if (stmt == NULL) {
-        return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    rc = sqlite3_bind_int(stmt, index, value);
-    if (rc != SQLITE_OK) {
-        return CMAPER_ERR_IO;
-    }
-
-    return CMAPER_OK;
-}
-
-static cmaper_err_t cmaper_snapshot_step_done(sqlite3_stmt *stmt) {
-    int rc;
-
-    if (stmt == NULL) {
-        return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    rc = sqlite3_step(stmt);
-    if (rc != SQLITE_DONE) {
-        return CMAPER_ERR_IO;
-    }
-
-    return CMAPER_OK;
-}
-
-static void cmaper_snapshot_finalize(sqlite3_stmt **stmt) {
-    if (stmt == NULL || *stmt == NULL) {
-        return;
-    }
-
-    sqlite3_finalize(*stmt);
-    *stmt = NULL;
 }
 
 void cmaper_snapshot_diag_clear(cmaper_snapshot_diag_t *diag) {
@@ -333,72 +229,72 @@ cmaper_err_t cmaper_snapshot_session_start(
         return CMAPER_OK;
     }
 
-    rc = cmaper_snapshot_prepare(store->db, SQL, &stmt);
+    rc = cmaper_snapshot_sqlite_prepare(store->db, SQL, &stmt);
     if (rc != CMAPER_OK) {
         return rc;
     }
 
-    rc = cmaper_snapshot_bind_text(stmt, 1, request->session_uid);
+    rc = cmaper_snapshot_sqlite_bind_text(stmt, 1, request->session_uid);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_text(stmt, 2, request->plan->target);
+    rc = cmaper_snapshot_sqlite_bind_text(stmt, 2, request->plan->target);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_text(stmt, 3, cmaper_scan_profile_name(request->plan->profile));
+    rc = cmaper_snapshot_sqlite_bind_text(stmt, 3, cmaper_scan_profile_name(request->plan->profile));
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_text_or_null(stmt, 4, request->plan->exact_ports);
+    rc = cmaper_snapshot_sqlite_bind_text_or_null(stmt, 4, request->plan->exact_ports);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 5, cmaper_snapshot_bool_to_int(request->plan->no_ping));
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 5, cmaper_snapshot_bool_to_int(request->plan->no_ping));
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 6, request->plan->timing_template);
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 6, request->plan->timing_template);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 7, request->plan->detail_workers);
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 7, request->plan->detail_workers);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 8, cmaper_snapshot_bool_to_int(request->plan->service_detection));
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 8, cmaper_snapshot_bool_to_int(request->plan->service_detection));
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 9, cmaper_snapshot_bool_to_int(request->plan->os_detection));
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 9, cmaper_snapshot_bool_to_int(request->plan->os_detection));
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 10, cmaper_snapshot_bool_to_int(request->plan->sudo));
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 10, cmaper_snapshot_bool_to_int(request->plan->sudo));
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_text(stmt, 11, cmaper_snapshot_spoof_mode_name(request->plan->spoof_mac_mode));
+    rc = cmaper_snapshot_sqlite_bind_text(stmt, 11, cmaper_snapshot_spoof_mode_name(request->plan->spoof_mac_mode));
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_text_or_null(stmt, 12, request->plan->spoof_mac_value);
+    rc = cmaper_snapshot_sqlite_bind_text_or_null(stmt, 12, request->plan->spoof_mac_value);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 13, cmaper_snapshot_bool_to_int(request->plan->traceroute));
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 13, cmaper_snapshot_bool_to_int(request->plan->traceroute));
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 14, cmaper_snapshot_bool_to_int(request->plan->udp_enrichment));
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 14, cmaper_snapshot_bool_to_int(request->plan->udp_enrichment));
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
 
-    rc = cmaper_snapshot_step_done(stmt);
+    rc = cmaper_snapshot_sqlite_step_done(stmt);
 
 cleanup:
-    cmaper_snapshot_finalize(&stmt);
+    cmaper_snapshot_sqlite_finalize(&stmt);
     return rc;
 }
 
@@ -423,21 +319,21 @@ cmaper_err_t cmaper_snapshot_session_fail(
         return CMAPER_OK;
     }
 
-    rc = cmaper_snapshot_prepare(store->db, SQL, &stmt);
+    rc = cmaper_snapshot_sqlite_prepare(store->db, SQL, &stmt);
     if (rc != CMAPER_OK) {
         return rc;
     }
 
-    rc = cmaper_snapshot_bind_text_or_null(stmt, 1, request->error_message);
+    rc = cmaper_snapshot_sqlite_bind_text_or_null(stmt, 1, request->error_message);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_text(stmt, 2, request->session_uid);
+    rc = cmaper_snapshot_sqlite_bind_text(stmt, 2, request->session_uid);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
 
-    rc = cmaper_snapshot_step_done(stmt);
+    rc = cmaper_snapshot_sqlite_step_done(stmt);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
@@ -447,7 +343,7 @@ cmaper_err_t cmaper_snapshot_session_fail(
     }
 
 cleanup:
-    cmaper_snapshot_finalize(&stmt);
+    cmaper_snapshot_sqlite_finalize(&stmt);
     return rc;
 }
 
@@ -477,37 +373,37 @@ cmaper_err_t cmaper_snapshot_session_complete(
         return CMAPER_OK;
     }
 
-    rc = cmaper_snapshot_prepare(store->db, SQL, &stmt);
+    rc = cmaper_snapshot_sqlite_prepare(store->db, SQL, &stmt);
     if (rc != CMAPER_OK) {
         return rc;
     }
 
-    rc = cmaper_snapshot_bind_text_or_null(stmt, 1, request->discovery_xml_path);
+    rc = cmaper_snapshot_sqlite_bind_text_or_null(stmt, 1, request->discovery_xml_path);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 2, (int) request->detail_targets_total);
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 2, (int) request->detail_targets_total);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 3, (int) request->detail_hosts_success);
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 3, (int) request->detail_hosts_success);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 4, (int) request->detail_hosts_failed);
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 4, (int) request->detail_hosts_failed);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_int(stmt, 5, (int) request->detail_hosts_degraded);
+    rc = cmaper_snapshot_sqlite_bind_int(stmt, 5, (int) request->detail_hosts_degraded);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
-    rc = cmaper_snapshot_bind_text(stmt, 6, request->session_uid);
+    rc = cmaper_snapshot_sqlite_bind_text(stmt, 6, request->session_uid);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
 
-    rc = cmaper_snapshot_step_done(stmt);
+    rc = cmaper_snapshot_sqlite_step_done(stmt);
     if (rc != CMAPER_OK) {
         goto cleanup;
     }
@@ -517,7 +413,7 @@ cmaper_err_t cmaper_snapshot_session_complete(
     }
 
 cleanup:
-    cmaper_snapshot_finalize(&stmt);
+    cmaper_snapshot_sqlite_finalize(&stmt);
     return rc;
 }
 

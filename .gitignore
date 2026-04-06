@@ -1,5 +1,7 @@
 build/
-cmaper
+build-clangd/
+compile_commands.json
+/cmaper
 *.o
 .DS_Store
 .cmaper/

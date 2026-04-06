@@ -41,6 +41,7 @@ static void cmaper_scan_plan_apply_overrides(
         plan->exact_ports = options->exact_ports;
     }
 
+    cmaper_scan_plan_apply_toggle(&plan->all_ports, options->all_ports);
     cmaper_scan_plan_apply_toggle(&plan->no_ping, options->no_ping);
 
     if (options->has_timing_template) {
@@ -111,6 +112,7 @@ void cmaper_scan_plan_init(cmaper_scan_plan_t *plan) {
     plan->target = NULL;
     plan->profile = CMAPER_SCAN_PROFILE_UNSET;
     plan->exact_ports = NULL;
+    plan->all_ports = false;
     plan->no_ping = false;
     plan->timing_template = 0;
     plan->detail_workers = 0;
@@ -123,6 +125,7 @@ void cmaper_scan_plan_init(cmaper_scan_plan_t *plan) {
     plan->udp_enrichment = false;
 
     plan->capabilities.exact_ports = false;
+    plan->capabilities.all_ports = false;
     plan->capabilities.no_ping = false;
     plan->capabilities.service_detection = false;
     plan->capabilities.os_detection = false;
@@ -143,6 +146,7 @@ void cmaper_scan_plan_apply_defaults(cmaper_scan_plan_t *plan) {
 
     plan->timing_template = 3;
     plan->detail_workers = 16;
+    plan->all_ports = false;
     plan->no_ping = false;
     plan->service_detection = false;
     plan->os_detection = false;
@@ -168,6 +172,7 @@ void cmaper_scan_plan_apply_profile_policy(cmaper_scan_plan_t *plan, cmaper_scan
     case CMAPER_SCAN_PROFILE_LOW:
         plan->timing_template = 2;
         plan->detail_workers = 8;
+        plan->all_ports = false;
         plan->no_ping = false;
         plan->service_detection = false;
         plan->os_detection = false;
@@ -180,6 +185,7 @@ void cmaper_scan_plan_apply_profile_policy(cmaper_scan_plan_t *plan, cmaper_scan
     case CMAPER_SCAN_PROFILE_MID:
         plan->timing_template = 3;
         plan->detail_workers = 16;
+        plan->all_ports = false;
         plan->no_ping = false;
         plan->service_detection = true;
         plan->os_detection = false;
@@ -191,12 +197,13 @@ void cmaper_scan_plan_apply_profile_policy(cmaper_scan_plan_t *plan, cmaper_scan
         return;
     case CMAPER_SCAN_PROFILE_HIGH:
         plan->timing_template = 4;
-        plan->detail_workers = 32;
+        plan->detail_workers = 8;
+        plan->all_ports = false;
         plan->no_ping = false;
         plan->service_detection = true;
         plan->os_detection = true;
         plan->sudo = true;
-        plan->spoof_mac_mode = CMAPER_SCAN_SPOOF_MAC_RANDOM;
+        plan->spoof_mac_mode = CMAPER_SCAN_SPOOF_MAC_OFF;
         plan->spoof_mac_value = NULL;
         plan->traceroute = true;
         plan->udp_enrichment = true;
@@ -251,6 +258,15 @@ cmaper_err_t cmaper_scan_plan_validate(
         return CMAPER_ERR_CLI_USAGE;
     }
 
+    if (plan->exact_ports != NULL && plan->all_ports) {
+        cmaper_scan_plan_diag_setf(
+            diag,
+            "--all-ports",
+            "options '--all-ports' and '--ports/--exact-ports' cannot be used together"
+        );
+        return CMAPER_ERR_CLI_USAGE;
+    }
+
     if (plan->spoof_mac_mode == CMAPER_SCAN_SPOOF_MAC_CUSTOM
         && (plan->spoof_mac_value == NULL || plan->spoof_mac_value[0] == '\0')) {
         cmaper_scan_plan_diag_setf(
@@ -274,6 +290,7 @@ void cmaper_scan_plan_compute_capabilities(cmaper_scan_plan_t *plan) {
     spoofing = plan->spoof_mac_mode != CMAPER_SCAN_SPOOF_MAC_OFF;
 
     plan->capabilities.exact_ports = plan->exact_ports != NULL;
+    plan->capabilities.all_ports = plan->all_ports;
     plan->capabilities.no_ping = plan->no_ping;
     plan->capabilities.service_detection = plan->service_detection;
     plan->capabilities.os_detection = plan->os_detection;
@@ -343,6 +360,7 @@ void cmaper_scan_plan_render_summary(FILE *stream, const cmaper_scan_plan_t *pla
         "  target: %s\n"
         "  profile: %s\n"
         "  exact-ports: %s\n"
+        "  all-ports: %s\n"
         "  no-ping: %s\n"
         "  timing-template: T%d\n"
         "  detail-workers: %d\n"
@@ -355,6 +373,7 @@ void cmaper_scan_plan_render_summary(FILE *stream, const cmaper_scan_plan_t *pla
         "  udp-enrichment: %s\n"
         "Capabilities:\n"
         "  exact-ports: %s\n"
+        "  all-ports: %s\n"
         "  no-ping: %s\n"
         "  service-detection: %s\n"
         "  os-detection: %s\n"
@@ -365,6 +384,7 @@ void cmaper_scan_plan_render_summary(FILE *stream, const cmaper_scan_plan_t *pla
         target,
         cmaper_scan_profile_name(plan->profile),
         ports,
+        cmaper_scan_bool_word(plan->all_ports),
         cmaper_scan_bool_word(plan->no_ping),
         plan->timing_template,
         plan->detail_workers,
@@ -376,6 +396,7 @@ void cmaper_scan_plan_render_summary(FILE *stream, const cmaper_scan_plan_t *pla
         cmaper_scan_bool_word(plan->traceroute),
         cmaper_scan_bool_word(plan->udp_enrichment),
         cmaper_scan_bool_word(plan->capabilities.exact_ports),
+        cmaper_scan_bool_word(plan->capabilities.all_ports),
         cmaper_scan_bool_word(plan->capabilities.no_ping),
         cmaper_scan_bool_word(plan->capabilities.service_detection),
         cmaper_scan_bool_word(plan->capabilities.os_detection),

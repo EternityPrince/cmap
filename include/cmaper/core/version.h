@@ -1,0 +1,6 @@
+#ifndef CMAPER_CORE_VERSION_H
+#define CMAPER_CORE_VERSION_H
+
+#define CMAPER_VERSION_STRING "0.1.0"
+
+#endif

@@ -215,6 +215,7 @@ cmaper_err_t cmaper_scan_runner_run(
     process_request.argv = result->discovery_command.argv;
     process_request.heartbeat_seconds = 15;
     process_request.heartbeat_label = "scan/discovery";
+    process_request.hard_timeout_seconds = 0;
 
     process_backend = request->process_backend != NULL
         ? request->process_backend

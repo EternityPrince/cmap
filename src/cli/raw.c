@@ -84,6 +84,8 @@ void cmaper_cli_raw_args_init(cmaper_cli_raw_args_t *raw) {
     raw->scan_profile = NULL;
     raw->target = NULL;
     raw->scan_ports = NULL;
+    raw->enable_all_ports = false;
+    raw->disable_all_ports = false;
     raw->enable_no_ping = false;
     raw->disable_no_ping = false;
     raw->scan_timing = NULL;
@@ -255,6 +257,16 @@ cmaper_err_t cmaper_cli_parse_raw_argv(
 
             if (strcmp(arg, "--ping") == 0) {
                 raw->disable_no_ping = true;
+                continue;
+            }
+
+            if (strcmp(arg, "--all-ports") == 0) {
+                raw->enable_all_ports = true;
+                continue;
+            }
+
+            if (strcmp(arg, "--no-all-ports") == 0) {
+                raw->disable_all_ports = true;
                 continue;
             }
 

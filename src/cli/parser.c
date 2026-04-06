@@ -114,6 +114,18 @@ static cmaper_err_t cmaper_cli_apply_scan_options(
     config->scan.exact_ports = raw->scan_ports;
 
     rc = cmaper_cli_resolve_scan_toggle(
+        raw->enable_all_ports,
+        raw->disable_all_ports,
+        "--all-ports",
+        "--no-all-ports",
+        &config->scan.all_ports,
+        diag
+    );
+    if (rc != CMAPER_OK) {
+        return rc;
+    }
+
+    rc = cmaper_cli_resolve_scan_toggle(
         raw->enable_no_ping,
         raw->disable_no_ping,
         "--no-ping",

@@ -83,6 +83,12 @@ echo "== devices =="
 run_quiet devices --session "$SESSION_NEW" > "$OUT_DIR/devices.txt"
 cat "$OUT_DIR/devices.txt"
 
+OPEN_TCP_ROWS=$(grep -c "open_tcp=2" "$OUT_DIR/devices.txt" || true)
+if [ "$OPEN_TCP_ROWS" -lt 2 ]; then
+    echo "Expected at least two hosts with open_tcp=2 in devices output, got $OPEN_TCP_ROWS" >&2
+    exit 1
+fi
+
 echo "== timeline =="
 run_quiet timeline --session "$SESSION_NEW" > "$OUT_DIR/timeline.txt"
 cat "$OUT_DIR/timeline.txt"
