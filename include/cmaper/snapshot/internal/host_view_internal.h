@@ -7,6 +7,8 @@
 #include "cmaper/scan/nmap_xml_model.h"
 #include "cmaper/snapshot/internal/merge_internal.h"
 
+#define CMAPER_SNAPSHOT_HOSTNAME_CAP 256
+
 typedef struct {
     const cmaper_nmap_xml_host_t *primary;
     const cmaper_nmap_xml_host_t *secondary;
@@ -25,6 +27,7 @@ typedef struct {
     size_t trace_count;
     const char *observation_source;
     const char *detail_xml_path;
+    char inferred_hostname[CMAPER_SNAPSHOT_HOSTNAME_CAP];
 } cmaper_snapshot_host_view_t;
 
 cmaper_err_t cmaper_snapshot_build_host_view(

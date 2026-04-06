@@ -128,6 +128,106 @@ static cmaper_err_t cmaper_scan_artifact_resolve_session_xml_dir(
     return CMAPER_OK;
 }
 
+static cmaper_err_t cmaper_scan_artifact_resolve_discovery_xml_path(
+    const cmaper_runtime_paths_t *paths,
+    const cmaper_scan_artifact_policy_t *policy,
+    char *out_path,
+    size_t out_path_cap
+) {
+    char xml_dir[CMAPER_SCAN_ARTIFACT_PATH_CAP];
+    cmaper_err_t rc;
+
+    if (paths == NULL || policy == NULL || out_path == NULL || out_path_cap == 0) {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    rc = cmaper_scan_artifact_resolve_session_xml_dir(paths, policy, xml_dir, sizeof(xml_dir));
+    if (rc != CMAPER_OK) {
+        return rc;
+    }
+
+    return cmaper_scan_artifact_join_path(out_path, out_path_cap, xml_dir, "discovery.xml");
+}
+
+static cmaper_err_t cmaper_scan_artifact_resolve_host_xml_path(
+    const cmaper_runtime_paths_t *paths,
+    const cmaper_scan_artifact_policy_t *policy,
+    const char *host_ip,
+    char *out_path,
+    size_t out_path_cap
+) {
+    char xml_dir[CMAPER_SCAN_ARTIFACT_PATH_CAP];
+    char host_component[CMAPER_SCAN_ARTIFACT_PATH_CAP];
+    char file_name[CMAPER_SCAN_ARTIFACT_PATH_CAP];
+    cmaper_err_t rc;
+
+    if (paths == NULL || policy == NULL || host_ip == NULL || out_path == NULL || out_path_cap == 0) {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    rc = cmaper_scan_artifact_resolve_session_xml_dir(paths, policy, xml_dir, sizeof(xml_dir));
+    if (rc != CMAPER_OK) {
+        return rc;
+    }
+
+    cmaper_scan_sanitize_component(host_ip, host_component, sizeof(host_component));
+    if (host_component[0] == '\0') {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    if (snprintf(file_name, sizeof(file_name), "host-%s.xml", host_component) >= (int) sizeof(file_name)) {
+        return CMAPER_ERR_IO;
+    }
+
+    return cmaper_scan_artifact_join_path(out_path, out_path_cap, xml_dir, file_name);
+}
+
+static cmaper_err_t cmaper_scan_artifact_copy_file(
+    const char *source_path,
+    const char *target_path
+) {
+    FILE *source = NULL;
+    FILE *target = NULL;
+    char buffer[8192];
+    size_t read_size;
+    cmaper_err_t rc = CMAPER_OK;
+
+    if (source_path == NULL || source_path[0] == '\0'
+        || target_path == NULL || target_path[0] == '\0') {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    source = fopen(source_path, "rb");
+    if (source == NULL) {
+        return CMAPER_ERR_IO;
+    }
+
+    target = fopen(target_path, "wb");
+    if (target == NULL) {
+        fclose(source);
+        return CMAPER_ERR_IO;
+    }
+
+    while ((read_size = fread(buffer, 1, sizeof(buffer), source)) > 0) {
+        if (fwrite(buffer, 1, read_size, target) != read_size) {
+            rc = CMAPER_ERR_IO;
+            break;
+        }
+    }
+    if (ferror(source)) {
+        rc = CMAPER_ERR_IO;
+    }
+
+    if (fclose(source) != 0) {
+        rc = CMAPER_ERR_IO;
+    }
+    if (fclose(target) != 0) {
+        rc = CMAPER_ERR_IO;
+    }
+
+    return rc;
+}
+
 cmaper_err_t cmaper_scan_artifact_save_discovery_xml(
     const cmaper_runtime_paths_t *paths,
     const cmaper_scan_artifact_policy_t *policy,
@@ -136,7 +236,6 @@ cmaper_err_t cmaper_scan_artifact_save_discovery_xml(
     char *out_path,
     size_t out_path_cap
 ) {
-    char xml_dir[CMAPER_SCAN_ARTIFACT_PATH_CAP];
     FILE *file;
     size_t written_size;
     cmaper_err_t rc;
@@ -161,16 +260,11 @@ cmaper_err_t cmaper_scan_artifact_save_discovery_xml(
         return CMAPER_ERR_INVALID_ARGUMENT;
     }
 
-    rc = cmaper_scan_artifact_resolve_session_xml_dir(paths, policy, xml_dir, sizeof(xml_dir));
-    if (rc != CMAPER_OK) {
-        return rc;
-    }
-
     if (out_path == NULL || out_path_cap == 0) {
         return CMAPER_ERR_INVALID_ARGUMENT;
     }
 
-    rc = cmaper_scan_artifact_join_path(out_path, out_path_cap, xml_dir, "discovery.xml");
+    rc = cmaper_scan_artifact_resolve_discovery_xml_path(paths, policy, out_path, out_path_cap);
     if (rc != CMAPER_OK) {
         return rc;
     }
@@ -193,6 +287,39 @@ cmaper_err_t cmaper_scan_artifact_save_discovery_xml(
     return CMAPER_OK;
 }
 
+cmaper_err_t cmaper_scan_artifact_save_discovery_xml_file(
+    const cmaper_runtime_paths_t *paths,
+    const cmaper_scan_artifact_policy_t *policy,
+    const char *source_path,
+    char *out_path,
+    size_t out_path_cap
+) {
+    cmaper_err_t rc;
+
+    if (out_path != NULL && out_path_cap > 0) {
+        out_path[0] = '\0';
+    }
+
+    if (paths == NULL || policy == NULL || source_path == NULL) {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    if (!policy->save_discovery_xml) {
+        return CMAPER_OK;
+    }
+
+    if (out_path == NULL || out_path_cap == 0) {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    rc = cmaper_scan_artifact_resolve_discovery_xml_path(paths, policy, out_path, out_path_cap);
+    if (rc != CMAPER_OK) {
+        return rc;
+    }
+
+    return cmaper_scan_artifact_copy_file(source_path, out_path);
+}
+
 cmaper_err_t cmaper_scan_artifact_save_host_xml(
     const cmaper_runtime_paths_t *paths,
     const cmaper_scan_artifact_policy_t *policy,
@@ -202,9 +329,6 @@ cmaper_err_t cmaper_scan_artifact_save_host_xml(
     char *out_path,
     size_t out_path_cap
 ) {
-    char xml_dir[CMAPER_SCAN_ARTIFACT_PATH_CAP];
-    char host_component[CMAPER_SCAN_ARTIFACT_PATH_CAP];
-    char file_name[CMAPER_SCAN_ARTIFACT_PATH_CAP];
     FILE *file;
     size_t written_size;
     cmaper_err_t rc;
@@ -221,25 +345,11 @@ cmaper_err_t cmaper_scan_artifact_save_host_xml(
         return CMAPER_OK;
     }
 
-    rc = cmaper_scan_artifact_resolve_session_xml_dir(paths, policy, xml_dir, sizeof(xml_dir));
-    if (rc != CMAPER_OK) {
-        return rc;
-    }
-
-    cmaper_scan_sanitize_component(host_ip, host_component, sizeof(host_component));
-    if (host_component[0] == '\0') {
-        return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    if (snprintf(file_name, sizeof(file_name), "host-%s.xml", host_component) >= (int) sizeof(file_name)) {
-        return CMAPER_ERR_IO;
-    }
-
     if (out_path == NULL || out_path_cap == 0) {
         return CMAPER_ERR_INVALID_ARGUMENT;
     }
 
-    rc = cmaper_scan_artifact_join_path(out_path, out_path_cap, xml_dir, file_name);
+    rc = cmaper_scan_artifact_resolve_host_xml_path(paths, policy, host_ip, out_path, out_path_cap);
     if (rc != CMAPER_OK) {
         return rc;
     }
@@ -260,4 +370,38 @@ cmaper_err_t cmaper_scan_artifact_save_host_xml(
     }
 
     return CMAPER_OK;
+}
+
+cmaper_err_t cmaper_scan_artifact_save_host_xml_file(
+    const cmaper_runtime_paths_t *paths,
+    const cmaper_scan_artifact_policy_t *policy,
+    const char *host_ip,
+    const char *source_path,
+    char *out_path,
+    size_t out_path_cap
+) {
+    cmaper_err_t rc;
+
+    if (out_path != NULL && out_path_cap > 0) {
+        out_path[0] = '\0';
+    }
+
+    if (paths == NULL || policy == NULL || host_ip == NULL || source_path == NULL) {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    if (!policy->save_host_xml) {
+        return CMAPER_OK;
+    }
+
+    if (out_path == NULL || out_path_cap == 0) {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    rc = cmaper_scan_artifact_resolve_host_xml_path(paths, policy, host_ip, out_path, out_path_cap);
+    if (rc != CMAPER_OK) {
+        return rc;
+    }
+
+    return cmaper_scan_artifact_copy_file(source_path, out_path);
 }

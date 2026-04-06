@@ -1,8 +1,38 @@
 #include "cmaper/scan/internal/detail_internal.h"
 
+#include <stdio.h>
 #include <string.h>
 
+#include "cmaper/platform/fs.h"
 #include "cmaper/scan/command.h"
+
+static cmaper_err_t cmaper_scan_write_bytes_to_file(
+    const char *path,
+    const char *data,
+    size_t size
+) {
+    FILE *file;
+
+    if (path == NULL || path[0] == '\0' || data == NULL || size == 0U) {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    file = fopen(path, "wb");
+    if (file == NULL) {
+        return CMAPER_ERR_IO;
+    }
+
+    if (fwrite(data, 1, size, file) != size) {
+        fclose(file);
+        return CMAPER_ERR_IO;
+    }
+
+    if (fclose(file) != 0) {
+        return CMAPER_ERR_IO;
+    }
+
+    return CMAPER_OK;
+}
 
 static int cmaper_scan_detail_phase_hard_timeout_seconds(
     const cmaper_scan_plan_t *plan,
@@ -18,7 +48,7 @@ static int cmaper_scan_detail_phase_hard_timeout_seconds(
     if (phase_label != NULL && strncmp(phase_label, "detail-probe", 12) == 0) {
         switch (profile) {
         case CMAPER_SCAN_PROFILE_LOW:
-            timeout_seconds = 240;
+            timeout_seconds = 420;
             break;
         case CMAPER_SCAN_PROFILE_MID:
             timeout_seconds = 420;
@@ -59,8 +89,7 @@ cmaper_err_t cmaper_scan_detail_run_command(
     const cmaper_scan_detail_command_t *command,
     const char *phase_label,
     int heartbeat_seconds,
-    char **out_stdout_data,
-    size_t *out_stdout_size,
+    const char *xml_output_path,
     char **out_stderr_data,
     size_t *out_stderr_size
 ) {
@@ -69,13 +98,11 @@ cmaper_err_t cmaper_scan_detail_run_command(
     cmaper_scan_process_run_fn backend;
     cmaper_err_t rc;
 
-    if (request == NULL || command == NULL || out_stdout_data == NULL || out_stdout_size == NULL
+    if (request == NULL || command == NULL || xml_output_path == NULL || xml_output_path[0] == '\0'
         || out_stderr_data == NULL || out_stderr_size == NULL) {
         return CMAPER_ERR_INVALID_ARGUMENT;
     }
 
-    *out_stdout_data = NULL;
-    *out_stdout_size = 0;
     *out_stderr_data = NULL;
     *out_stderr_size = 0;
 
@@ -117,15 +144,25 @@ cmaper_err_t cmaper_scan_detail_run_command(
         return CMAPER_ERR_INTERNAL;
     }
 
-    *out_stdout_data = process_result.stdout_data;
-    *out_stdout_size = process_result.stdout_size;
-    process_result.stdout_data = NULL;
-    process_result.stdout_size = 0;
-
     *out_stderr_data = process_result.stderr_data;
     *out_stderr_size = process_result.stderr_size;
     process_result.stderr_data = NULL;
     process_result.stderr_size = 0;
+
+    if (!cmaper_fs_path_exists(xml_output_path)
+        && process_result.stdout_data != NULL
+        && process_result.stdout_size > 0U) {
+        (void) cmaper_scan_write_bytes_to_file(
+            xml_output_path,
+            process_result.stdout_data,
+            process_result.stdout_size
+        );
+    }
+
+    if (!cmaper_fs_path_exists(xml_output_path)) {
+        cmaper_scan_process_result_dispose(&process_result);
+        return CMAPER_ERR_IO;
+    }
 
     cmaper_scan_process_result_dispose(&process_result);
     return CMAPER_OK;

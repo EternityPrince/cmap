@@ -61,6 +61,15 @@ typedef struct {
     char hostname[CMAPER_HISTORY_TEXT_CAP];
     char mac_address[CMAPER_HISTORY_MAC_CAP];
     char mac_vendor[CMAPER_HISTORY_VENDOR_CAP];
+    char open_tcp_list[CMAPER_HISTORY_DETAIL_CAP];
+    char scripts_used[CMAPER_HISTORY_DETAIL_CAP];
+    char script_results[CMAPER_HISTORY_DETAIL_CAP];
+    char script_signals[CMAPER_HISTORY_DETAIL_CAP];
+    char findings_detail[CMAPER_HISTORY_DETAIL_CAP];
+    char surfaces_detail[CMAPER_HISTORY_DETAIL_CAP];
+    size_t scripts_used_count;
+    size_t script_result_count;
+    size_t script_signal_count;
     size_t open_tcp_ports;
     size_t findings_open;
     size_t findings_high_or_worse;

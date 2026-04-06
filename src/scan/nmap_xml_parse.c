@@ -270,41 +270,22 @@ static void cmaper_nmap_xml_parse_runstats(
     }
 }
 
-cmaper_err_t cmaper_nmap_xml_parse_memory(
-    const char *xml_data,
-    size_t xml_size,
+static cmaper_err_t cmaper_nmap_xml_parse_doc(
+    xmlDocPtr xml_doc,
     cmaper_nmap_xml_document_t *document,
     cmaper_nmap_xml_diag_t *diag
 ) {
-    xmlDocPtr xml_doc = NULL;
     xmlNode *root;
     xmlNode *child;
     cmaper_err_t rc = CMAPER_OK;
 
-    if (xml_data == NULL || document == NULL) {
+    if (xml_doc == NULL || document == NULL) {
         return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    if (xml_size > (size_t) INT_MAX) {
-        cmaper_nmap_xml_diag_setf(diag, "xml", "xml input is too large for parser");
-        return CMAPER_ERR_PARSE;
     }
 
     cmaper_nmap_xml_diag_clear(diag);
     cmaper_nmap_xml_document_dispose(document);
     cmaper_nmap_xml_document_init(document);
-
-    xml_doc = xmlReadMemory(
-        xml_data,
-        (int) xml_size,
-        "nmap.xml",
-        NULL,
-        XML_PARSE_NONET | XML_PARSE_NOBLANKS
-    );
-    if (xml_doc == NULL) {
-        cmaper_nmap_xml_diag_setf(diag, "xml", "failed to parse nmap xml document");
-        return CMAPER_ERR_PARSE;
-    }
 
     root = xmlDocGetRootElement(xml_doc);
     if (root == NULL || !cmaper_nmap_xml_node_is(root, "nmaprun")) {
@@ -343,14 +324,68 @@ cmaper_err_t cmaper_nmap_xml_parse_memory(
     }
 
 cleanup:
-    if (xml_doc != NULL) {
-        xmlFreeDoc(xml_doc);
-    }
-
     if (rc != CMAPER_OK) {
         cmaper_nmap_xml_document_dispose(document);
         cmaper_nmap_xml_document_init(document);
     }
 
+    return rc;
+}
+
+cmaper_err_t cmaper_nmap_xml_parse_memory(
+    const char *xml_data,
+    size_t xml_size,
+    cmaper_nmap_xml_document_t *document,
+    cmaper_nmap_xml_diag_t *diag
+) {
+    xmlDocPtr xml_doc = NULL;
+    cmaper_err_t rc;
+
+    if (xml_data == NULL || document == NULL) {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    if (xml_size > (size_t) INT_MAX) {
+        cmaper_nmap_xml_diag_setf(diag, "xml", "xml input is too large for parser");
+        return CMAPER_ERR_PARSE;
+    }
+
+    xml_doc = xmlReadMemory(
+        xml_data,
+        (int) xml_size,
+        "nmap.xml",
+        NULL,
+        XML_PARSE_NONET | XML_PARSE_NOBLANKS
+    );
+    if (xml_doc == NULL) {
+        cmaper_nmap_xml_diag_setf(diag, "xml", "failed to parse nmap xml document");
+        return CMAPER_ERR_PARSE;
+    }
+
+    rc = cmaper_nmap_xml_parse_doc(xml_doc, document, diag);
+    xmlFreeDoc(xml_doc);
+    return rc;
+}
+
+cmaper_err_t cmaper_nmap_xml_parse_file(
+    const char *xml_path,
+    cmaper_nmap_xml_document_t *document,
+    cmaper_nmap_xml_diag_t *diag
+) {
+    xmlDocPtr xml_doc = NULL;
+    cmaper_err_t rc;
+
+    if (xml_path == NULL || xml_path[0] == '\0' || document == NULL) {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
+
+    xml_doc = xmlReadFile(xml_path, NULL, XML_PARSE_NONET | XML_PARSE_NOBLANKS);
+    if (xml_doc == NULL) {
+        cmaper_nmap_xml_diag_setf(diag, "xml", "failed to parse nmap xml document");
+        return CMAPER_ERR_PARSE;
+    }
+
+    rc = cmaper_nmap_xml_parse_doc(xml_doc, document, diag);
+    xmlFreeDoc(xml_doc);
     return rc;
 }

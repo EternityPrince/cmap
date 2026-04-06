@@ -4,8 +4,8 @@ static const cmaper_scan_script_set_info_t CMAPER_SCAN_SCRIPT_SET_ITEMS[] = {
     {
         CMAPER_SCAN_SCRIPT_SET_NMAP_DEFAULT,
         "nmap-default",
-        "Run Nmap default safe scripts (-sC).",
-        NULL
+        "Run Nmap default scripts with extra LAN hostname probes.",
+        "default,ssl-cert,smb-os-discovery,nbstat"
     },
     {
         CMAPER_SCAN_SCRIPT_SET_WEB_BASELINE,

@@ -147,14 +147,15 @@ int cmaper_scan_discovery_default_top_ports(cmaper_scan_profile_t profile) {
     switch (profile) {
     case CMAPER_SCAN_PROFILE_LOW:
         return 100;
+    case CMAPER_SCAN_PROFILE_MID:
+        return 1000;
     case CMAPER_SCAN_PROFILE_HIGH:
         return 1000;
-    case CMAPER_SCAN_PROFILE_MID:
     case CMAPER_SCAN_PROFILE_UNSET:
         break;
     }
 
-    return 300;
+    return 1000;
 }
 
 cmaper_err_t cmaper_scan_discovery_plan_build(

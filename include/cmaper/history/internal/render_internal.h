@@ -17,6 +17,18 @@ size_t cmaper_history_render_count_for_view(
 );
 
 void cmaper_history_render_heading(FILE *stream, bool use_ansi, const char *title);
+void cmaper_history_render_section(FILE *stream, bool use_ansi, const char *title);
+void cmaper_history_render_key_value(FILE *stream, const char *label, const char *value);
+void cmaper_history_render_key_size(FILE *stream, const char *label, size_t value);
+void cmaper_history_render_key_signed(FILE *stream, bool use_ansi, const char *label, long value);
+void cmaper_history_render_risk(FILE *stream, bool use_ansi, const char *level, const char *summary);
+void cmaper_history_render_truncated_note(
+    FILE *stream,
+    bool markdown,
+    size_t shown,
+    size_t total,
+    const char *subject
+);
 
 void cmaper_history_json_string(FILE *stream, const char *value);
 
@@ -25,6 +37,7 @@ void cmaper_history_render_reason_mask_json(FILE *stream, unsigned int mask);
 
 void cmaper_history_render_alerts_text(
     FILE *stream,
+    bool use_ansi,
     const cmaper_history_alert_t *alerts,
     size_t alert_count
 );

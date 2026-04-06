@@ -188,7 +188,7 @@ void cmaper_scan_plan_apply_profile_policy(cmaper_scan_plan_t *plan, cmaper_scan
         plan->all_ports = false;
         plan->no_ping = false;
         plan->service_detection = true;
-        plan->os_detection = false;
+        plan->os_detection = true;
         plan->sudo = false;
         plan->spoof_mac_mode = CMAPER_SCAN_SPOOF_MAC_OFF;
         plan->spoof_mac_value = NULL;

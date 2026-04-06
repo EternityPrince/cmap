@@ -7,7 +7,17 @@
 #include <string.h>
 
 static cmaper_log_level_t cmaper_cli_log_level_from_delta(int delta) {
-    int level = (int) CMAPER_LOG_PHASE - delta;
+    int level = 0;
+
+    /*
+     * Default level keeps [WAIT]/[OK]/[WARN]/[FAIL] without [PHASE].
+     * One `-v` should immediately enable [PHASE], while one `-q` should hide [WAIT].
+     */
+    if (delta > 0) {
+        level = (int) CMAPER_LOG_WAIT - (delta + 1);
+    } else {
+        level = (int) CMAPER_LOG_WAIT - delta;
+    }
 
     if (level < (int) CMAPER_LOG_PHASE) {
         return CMAPER_LOG_PHASE;

@@ -54,6 +54,167 @@ void cmaper_history_render_heading(
     }
 }
 
+void cmaper_history_render_section(
+    FILE *stream,
+    bool use_ansi,
+    const char *title
+) {
+    if (stream == NULL || title == NULL) {
+        return;
+    }
+
+    if (use_ansi) {
+        fprintf(stream, "\n\033[1;34m%s\033[0m\n", title);
+    } else {
+        fprintf(stream, "\n%s\n", title);
+    }
+}
+
+void cmaper_history_render_key_value(FILE *stream, const char *label, const char *value) {
+    if (stream == NULL || label == NULL) {
+        return;
+    }
+
+    fprintf(stream, "  %s: %s\n", label, value != NULL && value[0] != '\0' ? value : "-");
+}
+
+void cmaper_history_render_key_size(FILE *stream, const char *label, size_t value) {
+    if (stream == NULL || label == NULL) {
+        return;
+    }
+
+    fprintf(stream, "  %s: %zu\n", label, value);
+}
+
+void cmaper_history_render_key_signed(FILE *stream, bool use_ansi, const char *label, long value) {
+    const char *color = "\033[1;37m";
+
+    if (stream == NULL || label == NULL) {
+        return;
+    }
+
+    if (value > 0) {
+        color = "\033[1;33m";
+    } else if (value < 0) {
+        color = "\033[1;32m";
+    }
+
+    if (use_ansi) {
+        fprintf(stream, "  %s: %s%+ld\033[0m\n", label, color, value);
+    } else {
+        fprintf(stream, "  %s: %+ld\n", label, value);
+    }
+}
+
+static bool cmaper_history_render_level_is(const char *level, const char *expected) {
+    if (level == NULL || expected == NULL) {
+        return false;
+    }
+    return strcmp(level, expected) == 0;
+}
+
+static const char *cmaper_history_render_level_text(const char *level) {
+    if (cmaper_history_render_level_is(level, "critical")) {
+        return "CRITICAL";
+    }
+    if (cmaper_history_render_level_is(level, "high")) {
+        return "HIGH";
+    }
+    if (cmaper_history_render_level_is(level, "warn")) {
+        return "WARN";
+    }
+    if (cmaper_history_render_level_is(level, "ok")) {
+        return "OK";
+    }
+    return "INFO";
+}
+
+static const char *cmaper_history_render_level_color(const char *level) {
+    if (cmaper_history_render_level_is(level, "critical")) {
+        return "\033[1;31m";
+    }
+    if (cmaper_history_render_level_is(level, "high")) {
+        return "\033[38;5;208m";
+    }
+    if (cmaper_history_render_level_is(level, "warn")) {
+        return "\033[1;33m";
+    }
+    if (cmaper_history_render_level_is(level, "ok")) {
+        return "\033[1;32m";
+    }
+    return "\033[1;36m";
+}
+
+static void cmaper_history_render_badge(
+    FILE *stream,
+    bool use_ansi,
+    const char *level,
+    const char *text
+) {
+    if (stream == NULL || text == NULL) {
+        return;
+    }
+
+    if (use_ansi) {
+        fprintf(
+            stream,
+            "%s[%s]\033[0m",
+            cmaper_history_render_level_color(level),
+            text
+        );
+    } else {
+        fprintf(stream, "[%s]", text);
+    }
+}
+
+void cmaper_history_render_risk(
+    FILE *stream,
+    bool use_ansi,
+    const char *level,
+    const char *summary
+) {
+    if (stream == NULL) {
+        return;
+    }
+
+    fputs("  Risk: ", stream);
+    cmaper_history_render_badge(stream, use_ansi, level, cmaper_history_render_level_text(level));
+    fprintf(stream, " %s\n", summary != NULL && summary[0] != '\0' ? summary : "No additional context.");
+}
+
+void cmaper_history_render_truncated_note(
+    FILE *stream,
+    bool markdown,
+    size_t shown,
+    size_t total,
+    const char *subject
+) {
+    const char *item_label = subject != NULL && subject[0] != '\0' ? subject : "rows";
+
+    if (stream == NULL || shown >= total) {
+        return;
+    }
+
+    if (markdown) {
+        fprintf(
+            stream,
+            "\n_Notes: showing first %zu of %zu %s (use `--view full` for the full report)._\n",
+            shown,
+            total,
+            item_label
+        );
+    } else {
+        fputs("\nNotes\n", stream);
+        fprintf(
+            stream,
+            "  Showing first %zu of %zu %s. Use --view full for the complete report.\n",
+            shown,
+            total,
+            item_label
+        );
+    }
+}
+
 static void cmaper_history_json_escape(FILE *stream, const char *value) {
     size_t i;
 
@@ -177,6 +338,7 @@ void cmaper_history_render_reason_mask_json(FILE *stream, unsigned int mask) {
 
 void cmaper_history_render_alerts_text(
     FILE *stream,
+    bool use_ansi,
     const cmaper_history_alert_t *alerts,
     size_t alert_count
 ) {
@@ -186,12 +348,19 @@ void cmaper_history_render_alerts_text(
         return;
     }
 
-    fprintf(stream, "Alerts: %zu\n", alert_count);
+    fprintf(stream, "  Total alerts: %zu\n", alert_count);
+    if (alert_count == 0U) {
+        fputs("  - none\n", stream);
+        return;
+    }
+
     for (i = 0; i < alert_count; ++i) {
+        const char *level = alerts[i].severity;
+        fputs("  - ", stream);
+        cmaper_history_render_badge(stream, use_ansi, level, cmaper_history_render_level_text(level));
         fprintf(
             stream,
-            "  - [%s] %s (%s)%s%s\n",
-            alerts[i].severity,
+            " %s (%s)%s%s\n",
             alerts[i].title,
             alerts[i].code,
             alerts[i].host_key[0] != '\0' ? " host=" : "",

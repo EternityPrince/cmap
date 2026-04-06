@@ -153,9 +153,14 @@ void cmaper_scan_detail_spoof_policy_resolve(
 
 static cmaper_err_t cmaper_scan_detail_command_add_base(
     const cmaper_scan_detail_request_t *request,
+    const char *xml_output_path,
     cmaper_scan_detail_command_t *command
 ) {
     cmaper_err_t rc;
+
+    if (xml_output_path == NULL || xml_output_path[0] == '\0') {
+        return CMAPER_ERR_INVALID_ARGUMENT;
+    }
 
     if (request->plan->sudo) {
         rc = cmaper_scan_detail_command_push(command, CMAPER_SCAN_SUDO_BIN);
@@ -176,15 +181,11 @@ static cmaper_err_t cmaper_scan_detail_command_add_base(
     if (rc != CMAPER_OK) {
         return rc;
     }
-    rc = cmaper_scan_detail_command_push(command, "-n");
-    if (rc != CMAPER_OK) {
-        return rc;
-    }
     rc = cmaper_scan_detail_command_push(command, "-oX");
     if (rc != CMAPER_OK) {
         return rc;
     }
-    rc = cmaper_scan_detail_command_push(command, "-");
+    rc = cmaper_scan_detail_command_push(command, xml_output_path);
     if (rc != CMAPER_OK) {
         return rc;
     }
@@ -226,16 +227,16 @@ static cmaper_err_t cmaper_scan_detail_command_add_timing(
 static int cmaper_scan_detail_probe_timeout_seconds(cmaper_scan_profile_t profile) {
     switch (profile) {
     case CMAPER_SCAN_PROFILE_LOW:
-        return 120;
+        return 480;
     case CMAPER_SCAN_PROFILE_MID:
-        return 240;
+        return 600;
     case CMAPER_SCAN_PROFILE_HIGH:
-        return 420;
+        return 900;
     case CMAPER_SCAN_PROFILE_UNSET:
         break;
     }
 
-    return 240;
+    return 600;
 }
 
 static int cmaper_scan_detail_enrichment_timeout_seconds(cmaper_scan_profile_t profile) {
@@ -256,16 +257,16 @@ static int cmaper_scan_detail_enrichment_timeout_seconds(cmaper_scan_profile_t p
 static int cmaper_scan_detail_probe_max_retries(cmaper_scan_profile_t profile) {
     switch (profile) {
     case CMAPER_SCAN_PROFILE_LOW:
-        return 1;
-    case CMAPER_SCAN_PROFILE_MID:
-        return 2;
-    case CMAPER_SCAN_PROFILE_HIGH:
         return 3;
+    case CMAPER_SCAN_PROFILE_MID:
+        return 4;
+    case CMAPER_SCAN_PROFILE_HIGH:
+        return 5;
     case CMAPER_SCAN_PROFILE_UNSET:
         break;
     }
 
-    return 2;
+    return 4;
 }
 
 static cmaper_err_t cmaper_scan_detail_command_add_host_timeout(
@@ -359,6 +360,7 @@ static cmaper_err_t cmaper_scan_detail_command_add_script_pipeline(
 cmaper_err_t cmaper_scan_detail_build_probe_command(
     const cmaper_scan_detail_request_t *request,
     const cmaper_scan_detail_target_t *target,
+    const char *xml_output_path,
     const cmaper_scan_detail_spoof_policy_t *spoof_policy,
     cmaper_scan_detail_command_t *command
 ) {
@@ -366,6 +368,7 @@ cmaper_err_t cmaper_scan_detail_build_probe_command(
         request,
         target,
         CMAPER_SCAN_DETAIL_PROBE_TRANSPORT_DEFAULT,
+        xml_output_path,
         spoof_policy,
         command
     );
@@ -375,6 +378,7 @@ cmaper_err_t cmaper_scan_detail_build_probe_command_with_transport(
     const cmaper_scan_detail_request_t *request,
     const cmaper_scan_detail_target_t *target,
     cmaper_scan_detail_probe_transport_t transport,
+    const char *xml_output_path,
     const cmaper_scan_detail_spoof_policy_t *spoof_policy,
     cmaper_scan_detail_command_t *command
 ) {
@@ -385,7 +389,7 @@ cmaper_err_t cmaper_scan_detail_build_probe_command_with_transport(
 
     cmaper_scan_detail_command_init(command);
 
-    rc = cmaper_scan_detail_command_add_base(request, command);
+    rc = cmaper_scan_detail_command_add_base(request, xml_output_path, command);
     if (rc != CMAPER_OK) {
         return rc;
     }
@@ -409,8 +413,10 @@ cmaper_err_t cmaper_scan_detail_build_probe_command_with_transport(
         /* Keep probe broad enough to avoid false "no-open-ports" on common services. */
         if (request->plan->profile == CMAPER_SCAN_PROFILE_HIGH && probe_top_ports < 3000) {
             probe_top_ports = 3000;
-        } else if (probe_top_ports < 1000) {
+        } else if (request->plan->profile == CMAPER_SCAN_PROFILE_MID && probe_top_ports < 1000) {
             probe_top_ports = 1000;
+        } else if (request->plan->profile == CMAPER_SCAN_PROFILE_LOW && probe_top_ports < 300) {
+            probe_top_ports = 300;
         }
         snprintf(top_ports, sizeof(top_ports), "%d", probe_top_ports);
         rc = cmaper_scan_detail_command_push(command, top_ports);
@@ -464,6 +470,7 @@ cmaper_err_t cmaper_scan_detail_build_enrichment_like_command(
     const char *ip,
     const int *ports,
     size_t port_count,
+    const char *xml_output_path,
     const cmaper_scan_detail_spoof_policy_t *spoof_policy,
     cmaper_scan_detail_command_t *command
 ) {
@@ -481,7 +488,7 @@ cmaper_err_t cmaper_scan_detail_build_enrichment_like_command(
 
     cmaper_scan_detail_command_init(command);
 
-    rc = cmaper_scan_detail_command_add_base(request, command);
+    rc = cmaper_scan_detail_command_add_base(request, xml_output_path, command);
     if (rc != CMAPER_OK) {
         return rc;
     }

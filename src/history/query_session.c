@@ -1,5 +1,6 @@
 #include "cmaper/history/internal/query_internal.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -79,6 +80,260 @@ static cmaper_err_t cmaper_history_fill_session_row(
     *out_found = true;
     cmaper_history_finalize(&stmt);
     return CMAPER_OK;
+}
+
+static void cmaper_history_session_host_set_defaults(cmaper_history_session_host_row_t *row) {
+    if (row == NULL) {
+        return;
+    }
+
+    (void) snprintf(row->open_tcp_list, sizeof(row->open_tcp_list), "none");
+    (void) snprintf(row->scripts_used, sizeof(row->scripts_used), "none");
+    (void) snprintf(row->script_results, sizeof(row->script_results), "none");
+    (void) snprintf(row->script_signals, sizeof(row->script_signals), "none");
+    (void) snprintf(row->findings_detail, sizeof(row->findings_detail), "none");
+    (void) snprintf(row->surfaces_detail, sizeof(row->surfaces_detail), "none");
+    row->scripts_used_count = 0U;
+    row->script_result_count = 0U;
+    row->script_signal_count = 0U;
+}
+
+static void cmaper_history_session_host_apply_snapshot(
+    cmaper_history_session_host_row_t *row,
+    const cmaper_history_host_snapshot_t *snapshot
+) {
+    size_t i;
+
+    if (row == NULL || snapshot == NULL) {
+        return;
+    }
+
+    cmaper_history_detail_text_clear(row->open_tcp_list, sizeof(row->open_tcp_list));
+    for (i = 0; i < snapshot->port_count; ++i) {
+        char token[48];
+        (void) snprintf(
+            token,
+            sizeof(token),
+            "%d/%s",
+            snapshot->ports[i].port,
+            snapshot->ports[i].protocol[0] != '\0' ? snapshot->ports[i].protocol : "-"
+        );
+        cmaper_history_detail_text_append(row->open_tcp_list, sizeof(row->open_tcp_list), token);
+    }
+    if (row->open_tcp_list[0] == '\0') {
+        (void) snprintf(row->open_tcp_list, sizeof(row->open_tcp_list), "none");
+    }
+
+    row->scripts_used_count = snapshot->script_result_count;
+    row->script_result_count = snapshot->script_result_count;
+    cmaper_history_detail_text_clear(row->scripts_used, sizeof(row->scripts_used));
+    cmaper_history_detail_text_clear(row->script_results, sizeof(row->script_results));
+    for (i = 0; i < snapshot->script_result_count; ++i) {
+        char token_used[192];
+        char token_result[256];
+        char token_target[32];
+        char compact_output[96];
+        const cmaper_history_script_result_signal_t *script = &snapshot->script_results[i];
+
+        if (script->script_id[0] == '\0') {
+            continue;
+        }
+
+        if (script->has_service_context) {
+            (void) snprintf(
+                token_used,
+                sizeof(token_used),
+                "%s@%s/%d",
+                script->script_id,
+                script->protocol,
+                script->port
+            );
+        } else {
+            (void) snprintf(token_used, sizeof(token_used), "%s", script->script_id);
+        }
+        cmaper_history_detail_text_append(row->scripts_used, sizeof(row->scripts_used), token_used);
+
+        cmaper_history_detail_text_compact_copy(
+            compact_output,
+            sizeof(compact_output),
+            script->output,
+            72U
+        );
+        if (compact_output[0] == '\0') {
+            (void) snprintf(compact_output, sizeof(compact_output), "-");
+        }
+
+        if (script->has_service_context) {
+            (void) snprintf(
+                token_target,
+                sizeof(token_target),
+                "%s/%d",
+                script->protocol,
+                script->port
+            );
+            (void) snprintf(
+                token_result,
+                sizeof(token_result),
+                "%s\t%s\t%s",
+                script->script_id,
+                token_target,
+                compact_output
+            );
+        } else {
+            (void) snprintf(token_target, sizeof(token_target), "host");
+            (void) snprintf(
+                token_result,
+                sizeof(token_result),
+                "%s\t%s\t%s",
+                script->script_id,
+                token_target,
+                compact_output
+            );
+        }
+        cmaper_history_detail_text_append_line(
+            row->script_results,
+            sizeof(row->script_results),
+            token_result
+        );
+    }
+    if (row->scripts_used[0] == '\0') {
+        (void) snprintf(row->scripts_used, sizeof(row->scripts_used), "none");
+    }
+    if (row->script_results[0] == '\0') {
+        (void) snprintf(row->script_results, sizeof(row->script_results), "none");
+    }
+
+    row->script_signal_count = snapshot->fingerprint_count;
+    cmaper_history_detail_text_clear(row->script_signals, sizeof(row->script_signals));
+    for (i = 0; i < snapshot->fingerprint_count; ++i) {
+        char token[160];
+        const cmaper_history_fingerprint_signal_t *signal = &snapshot->fingerprints[i];
+        if (signal->has_service_context) {
+            (void) snprintf(
+                token,
+                sizeof(token),
+                "%s@%s/%d=%.*s",
+                signal->kind,
+                signal->protocol,
+                signal->port,
+                48,
+                signal->value
+            );
+        } else {
+            (void) snprintf(
+                token,
+                sizeof(token),
+                "%s=%.*s",
+                signal->kind,
+                48,
+                signal->value
+            );
+        }
+        cmaper_history_detail_text_append(row->script_signals, sizeof(row->script_signals), token);
+    }
+    if (row->script_signals[0] == '\0') {
+        (void) snprintf(row->script_signals, sizeof(row->script_signals), "none");
+    }
+
+    cmaper_history_detail_text_clear(row->findings_detail, sizeof(row->findings_detail));
+    for (i = 0; i < snapshot->finding_count; ++i) {
+        char token[192];
+        const cmaper_history_finding_signal_t *finding = &snapshot->findings[i];
+        if (finding->has_service_context) {
+            (void) snprintf(
+                token,
+                sizeof(token),
+                "%s:%s(%s)@%s/%d",
+                finding->severity,
+                finding->key,
+                finding->state,
+                finding->protocol,
+                finding->port
+            );
+        } else {
+            (void) snprintf(
+                token,
+                sizeof(token),
+                "%s:%s(%s)",
+                finding->severity,
+                finding->key,
+                finding->state
+            );
+        }
+        cmaper_history_detail_text_append(row->findings_detail, sizeof(row->findings_detail), token);
+    }
+    if (row->findings_detail[0] == '\0') {
+        (void) snprintf(row->findings_detail, sizeof(row->findings_detail), "none");
+    }
+
+    cmaper_history_detail_text_clear(row->surfaces_detail, sizeof(row->surfaces_detail));
+    for (i = 0; i < snapshot->surface_count; ++i) {
+        char token[192];
+        const cmaper_history_surface_signal_t *surface = &snapshot->surfaces[i];
+        if (surface->has_service_context) {
+            (void) snprintf(
+                token,
+                sizeof(token),
+                "%s@%s/%d:%.*s",
+                surface->type,
+                surface->protocol,
+                surface->port,
+                48,
+                surface->detail
+            );
+        } else {
+            (void) snprintf(
+                token,
+                sizeof(token),
+                "%s:%.*s",
+                surface->type,
+                48,
+                surface->detail
+            );
+        }
+        cmaper_history_detail_text_append(row->surfaces_detail, sizeof(row->surfaces_detail), token);
+    }
+    if (row->surfaces_detail[0] == '\0') {
+        (void) snprintf(row->surfaces_detail, sizeof(row->surfaces_detail), "none");
+    }
+}
+
+static void cmaper_history_session_hosts_apply_snapshots(
+    cmaper_history_session_host_row_t *rows,
+    size_t row_count,
+    const cmaper_history_host_snapshot_t *snapshots,
+    size_t snapshot_count
+) {
+    size_t i;
+    size_t j;
+
+    if (rows == NULL || row_count == 0U) {
+        return;
+    }
+
+    for (i = 0; i < row_count; ++i) {
+        const cmaper_history_host_snapshot_t *best = NULL;
+
+        cmaper_history_session_host_set_defaults(&rows[i]);
+
+        for (j = 0; j < snapshot_count; ++j) {
+            if (strcmp(rows[i].device_id, snapshots[j].device_id) != 0) {
+                continue;
+            }
+            if (rows[i].primary_ip[0] != '\0' && snapshots[j].primary_ip[0] != '\0'
+                && strcmp(rows[i].primary_ip, snapshots[j].primary_ip) == 0) {
+                best = &snapshots[j];
+                break;
+            }
+            if (best == NULL) {
+                best = &snapshots[j];
+            }
+        }
+
+        if (best != NULL) {
+            cmaper_history_session_host_apply_snapshot(&rows[i], best);
+        }
+    }
 }
 
 cmaper_err_t cmaper_history_query_resolve_session(
@@ -267,6 +522,8 @@ cmaper_err_t cmaper_history_query_session_detail(
         "WHERE ho.session_id=?;";
     sqlite3_stmt *stmt_hosts = NULL;
     cmaper_history_buffer_t host_rows;
+    cmaper_history_host_snapshot_t *snapshots = NULL;
+    size_t snapshot_count = 0U;
     cmaper_err_t rc;
     bool found = false;
     int step_rc;
@@ -337,6 +594,25 @@ cmaper_err_t cmaper_history_query_session_detail(
             cmaper_history_session_host_row_compare);
     }
 
+    cmaper_history_session_hosts_apply_snapshots(
+        (cmaper_history_session_host_row_t *) host_rows.items,
+        host_rows.count,
+        NULL,
+        0U
+    );
+    rc = cmaper_history_query_host_snapshots(db, session_ref->id, &snapshots, &snapshot_count);
+    if (rc == CMAPER_OK) {
+        cmaper_history_session_hosts_apply_snapshots(
+            (cmaper_history_session_host_row_t *) host_rows.items,
+            host_rows.count,
+            snapshots,
+            snapshot_count
+        );
+    } else {
+        /* Keep base session rows usable even when deep snapshot tables are unavailable. */
+        rc = CMAPER_OK;
+    }
+
     out_report->hosts = (cmaper_history_session_host_row_t *) host_rows.items;
     out_report->host_count = host_rows.count;
     host_rows.items = NULL;
@@ -344,6 +620,9 @@ cmaper_err_t cmaper_history_query_session_detail(
 
 cleanup:
     cmaper_history_finalize(&stmt_hosts);
+    if (snapshots != NULL) {
+        cmaper_history_host_snapshots_dispose(snapshots, snapshot_count);
+    }
     cmaper_history_buffer_dispose(&host_rows);
     return rc;
 }

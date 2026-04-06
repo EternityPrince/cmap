@@ -2,6 +2,24 @@
 
 #include <stdio.h>
 
+static const char *cmaper_history_device_risk_level(
+    bool selected_present,
+    size_t findings_high,
+    size_t findings_open,
+    size_t surfaces
+) {
+    if (!selected_present) {
+        return "warn";
+    }
+    if (findings_high > 0U) {
+        return "critical";
+    }
+    if (findings_open > 0U || surfaces > 0U) {
+        return "warn";
+    }
+    return "ok";
+}
+
 void cmaper_history_render_devices(
     FILE *stream,
     const cmaper_history_render_options_t *options,
@@ -79,33 +97,62 @@ void cmaper_history_render_devices(
     }
 
     if (format == CMAPER_OUTPUT_FORMAT_MARKDOWN) {
+        size_t max_open = 0U;
+        size_t max_high = 0U;
+        size_t max_surfaces = 0U;
+
+        fputs("# Devices\n\n## Context\n\n", stream);
+        fprintf(stream, "- Database: **%s**\n", report->db_available ? "ready" : "missing");
+        fprintf(stream, "- Session: `%s`\n", report->session_id);
+        fprintf(stream, "- Requested limit: **%d**\n", report->limit);
+        fprintf(stream, "- Devices available: **%zu**\n", report->total_devices);
+        fprintf(stream, "- Devices shown: **%zu**\n", shown_count);
+
         if (!report->db_available) {
-            fputs("# Devices\n\nNo history database found.\n", stream);
+            fputs("\n## Notes\n\nNo history database found.\n", stream);
             return;
         }
         if (!report->session_found) {
-            fprintf(stream, "# Devices\n\nSession `%s` not found.\n", report->session_id);
+            fputs("\n## Notes\n\nSession was not found in history.\n", stream);
             return;
         }
 
+        for (i = 0; i < shown_count; ++i) {
+            const cmaper_history_device_row_t *row = &report->items[i];
+            if (row->findings_open > max_open) {
+                max_open = row->findings_open;
+            }
+            if (row->findings_high_or_worse > max_high) {
+                max_high = row->findings_high_or_worse;
+            }
+            if (row->management_surfaces > max_surfaces) {
+                max_surfaces = row->management_surfaces;
+            }
+        }
+
+        fputs("\n## Key Takeaways\n\n", stream);
         fprintf(
             stream,
-            "# Devices for `%s`\n\n- Total: **%zu**\n- Shown: **%zu**\n- Limit: **%d**\n\n",
-            report->session_id,
-            report->total_devices,
-            shown_count,
-            report->limit
+            "- **Risk:** **%s** (highest per shown device: open findings **%zu**, high/critical **%zu**, surfaces **%zu**)\n",
+            max_high > 0U ? "CRITICAL" : ((max_open > 0U || max_surfaces > 0U) ? "WARN" : "OK"),
+            max_open,
+            max_high,
+            max_surfaces
         );
-        fputs("| Device | IP | MAC | Hostname | Status | Open TCP | Findings(open/high) | Surfaces |\n", stream);
-        fputs("|---|---|---|---|---|---:|---:|---:|\n", stream);
+        fprintf(stream, "- Session has **%zu** tracked devices.\n", report->total_devices);
+
+        fputs(
+            "\n## Details\n\n| Device | IP | Hostname | Host status | Open TCP | Open findings (high) | Surfaces |\n"
+            "|---|---|---|---|---:|---:|---:|\n",
+            stream
+        );
         for (i = 0; i < shown_count; ++i) {
             const cmaper_history_device_row_t *row = &report->items[i];
             fprintf(
                 stream,
-                "| %s | %s | %s | %s | %s | %zu | %zu/%zu | %zu |\n",
+                "| %s | %s | %s | %s | %zu | %zu (%zu) | %zu |\n",
                 row->device_id,
                 row->primary_ip,
-                row->mac_address,
                 row->hostname,
                 row->status,
                 row->open_tcp_ports,
@@ -114,48 +161,94 @@ void cmaper_history_render_devices(
                 row->management_surfaces
             );
         }
-        if (shown_count < report->count) {
-            fprintf(stream, "\n_Compact view: showing first %zu of %zu devices._\n", shown_count, report->count);
-        }
-        return;
-    }
 
-    if (!report->db_available) {
-        fputs("Devices report: no history database found.\n", stream);
-        return;
-    }
-    if (!report->session_found) {
-        fprintf(stream, "Devices report: session '%s' not found.\n", report->session_id);
+        cmaper_history_render_truncated_note(stream, true, shown_count, report->count, "devices");
         return;
     }
 
     cmaper_history_render_heading(stream, use_ansi, "Devices");
-    fprintf(
-        stream,
-        "Session: %s\nSummary: total=%zu shown=%zu%s\n",
-        report->session_id,
-        report->total_devices,
-        shown_count,
-        report->truncated ? " (truncated)" : ""
-    );
-    for (i = 0; i < shown_count; ++i) {
-        const cmaper_history_device_row_t *row = &report->items[i];
+    cmaper_history_render_section(stream, use_ansi, "Context");
+    cmaper_history_render_key_value(stream, "Database", report->db_available ? "ready" : "missing");
+    cmaper_history_render_key_value(stream, "Session", report->session_id);
+    fprintf(stream, "  Requested limit: %d\n", report->limit);
+    cmaper_history_render_key_size(stream, "Devices available", report->total_devices);
+    cmaper_history_render_key_size(stream, "Devices shown", shown_count);
+
+    if (!report->db_available) {
+        cmaper_history_render_section(stream, use_ansi, "Notes");
+        fputs("  No history database found.\n", stream);
+        return;
+    }
+    if (!report->session_found) {
+        cmaper_history_render_section(stream, use_ansi, "Notes");
+        fputs("  Session was not found in history.\n", stream);
+        return;
+    }
+
+    {
+        size_t max_open = 0U;
+        size_t max_high = 0U;
+        size_t max_surfaces = 0U;
+
+        for (i = 0; i < shown_count; ++i) {
+            const cmaper_history_device_row_t *row = &report->items[i];
+            if (row->findings_open > max_open) {
+                max_open = row->findings_open;
+            }
+            if (row->findings_high_or_worse > max_high) {
+                max_high = row->findings_high_or_worse;
+            }
+            if (row->management_surfaces > max_surfaces) {
+                max_surfaces = row->management_surfaces;
+            }
+        }
+
+        cmaper_history_render_section(stream, use_ansi, "Key Takeaways");
+        cmaper_history_render_risk(
+            stream,
+            use_ansi,
+            max_high > 0U ? "critical" : ((max_open > 0U || max_surfaces > 0U) ? "warn" : "ok"),
+            max_high > 0U
+                ? "At least one shown device has high/critical findings."
+                : ((max_open > 0U || max_surfaces > 0U)
+                    ? "Shown devices have open findings or exposed management surfaces."
+                    : "No open findings in shown devices.")
+        );
         fprintf(
             stream,
-            "  device=%s ip=%s mac=%s hostname=%s open_tcp=%zu findings(open/high)=%zu/%zu surfaces=%zu\n",
-            row->device_id,
-            row->primary_ip,
-            row->mac_address,
-            row->hostname,
-            row->open_tcp_ports,
-            row->findings_open,
-            row->findings_high_or_worse,
-            row->management_surfaces
+            "  Highest per shown device: open findings=%zu, high/critical=%zu, surfaces=%zu\n",
+            max_open,
+            max_high,
+            max_surfaces
         );
+
+        cmaper_history_render_section(stream, use_ansi, "Details");
+        if (shown_count == 0U) {
+            fputs("  No devices to display.\n", stream);
+        }
+        for (i = 0; i < shown_count; ++i) {
+            const cmaper_history_device_row_t *row = &report->items[i];
+            fprintf(
+                stream,
+                "  - device %s  ip=%s  status=%s  open_tcp=%zu  open findings=%zu (high=%zu)  surfaces=%zu\n",
+                row->device_id,
+                row->primary_ip,
+                row->status,
+                row->open_tcp_ports,
+                row->findings_open,
+                row->findings_high_or_worse,
+                row->management_surfaces
+            );
+            fprintf(
+                stream,
+                "    hostname=%s  mac=%s\n",
+                row->hostname,
+                row->mac_address
+            );
+        }
     }
-    if (shown_count < report->count) {
-        fprintf(stream, "  ... compact view: showing %zu of %zu devices (use --view full)\n", shown_count, report->count);
-    }
+
+    cmaper_history_render_truncated_note(stream, false, shown_count, report->count, "devices");
 }
 
 void cmaper_history_render_device(
@@ -269,48 +362,77 @@ void cmaper_history_render_device(
     }
 
     if (format == CMAPER_OUTPUT_FORMAT_MARKDOWN) {
+        fputs("# Device\n\n", stream);
+
         if (!report->db_available) {
-            fputs("# Device\n\nNo history database found.\n", stream);
+            fputs("## Notes\n\nNo history database found.\n", stream);
             return;
         }
         if (!report->session_found) {
-            fprintf(stream, "# Device\n\nSession `%s` not found.\n", report->session_id);
+            fprintf(stream, "## Notes\n\nSession `%s` not found.\n", report->session_id);
             return;
         }
         if (!report->found) {
-            fprintf(stream, "# Device\n\nDevice `%s` not found.\n", report->device_id);
+            fprintf(stream, "## Notes\n\nDevice `%s` not found.\n", report->device_id);
             return;
         }
 
+        fprintf(stream, "## Context\n\n");
+        fprintf(stream, "- Device: `%s`\n", report->device_id);
+        fprintf(stream, "- Session: `%s`\n", report->session_id);
+        fprintf(stream, "- Stable key: `%s`\n", report->stable_key);
+        fprintf(stream, "- Fallback key: `%s`\n", report->fallback_key);
+        fprintf(stream, "- MAC: `%s`\n", report->mac_address);
+        fprintf(stream, "- Vendor: `%s`\n", report->mac_vendor);
+
+        fputs("\n## Key Takeaways\n\n", stream);
         fprintf(
             stream,
-            "# Device `%s`\n\n- Session: `%s`\n- Stable key: `%s`\n- Fallback key: `%s`\n- MAC: `%s`\n- Vendor: `%s`\n\n",
-            report->device_id,
-            report->session_id,
-            report->stable_key,
-            report->fallback_key,
-            report->mac_address,
-            report->mac_vendor
+            "- **Risk:** **%s**\n",
+            report->selected_observation_found
+                ? (report->selected_findings_high_or_worse > 0U
+                    ? "CRITICAL"
+                    : ((report->selected_findings_open > 0U || report->selected_management_surfaces > 0U)
+                        ? "WARN"
+                        : "OK"))
+                : "WARN"
         );
-
         if (report->selected_observation_found) {
             fprintf(
                 stream,
-                "## Selected observation\n\n- IP: `%s`\n- Status: `%s`\n- Hostname: `%s`\n- Open TCP: **%zu**\n- Findings(open/high): **%zu / %zu**\n- Surfaces: **%zu**\n\n",
+                "- Selected observation: `%s` / `%s` with open findings **%zu** (high/critical **%zu**) and surfaces **%zu**\n",
                 report->selected_primary_ip,
                 report->selected_status,
-                report->selected_hostname,
-                report->selected_open_tcp_ports,
                 report->selected_findings_open,
                 report->selected_findings_high_or_worse,
                 report->selected_management_surfaces
             );
         } else {
-            fputs("## Selected observation\n\nNot present in this session.\n\n", stream);
+            fputs("- Selected observation: device is not present in this session.\n", stream);
         }
 
-        fputs("## IP history\n\n| IP | Type | Current | First seen | Last seen |\n", stream);
-        fputs("|---|---|---|---|---|\n", stream);
+        fputs("\n## Details\n\n### Selected Observation\n\n", stream);
+        if (report->selected_observation_found) {
+            fprintf(stream, "- IP: `%s`\n", report->selected_primary_ip);
+            fprintf(stream, "- Host status: `%s`\n", report->selected_status);
+            fprintf(stream, "- Hostname: `%s`\n", report->selected_hostname);
+            fprintf(stream, "- Open TCP ports: **%zu**\n", report->selected_open_tcp_ports);
+            fprintf(
+                stream,
+                "- Open findings (high): **%zu (%zu)**\n",
+                report->selected_findings_open,
+                report->selected_findings_high_or_worse
+            );
+            fprintf(stream, "- Management surfaces: **%zu**\n", report->selected_management_surfaces);
+        } else {
+            fputs("- Not present in this session.\n", stream);
+        }
+
+        fputs(
+            "\n### IP History\n\n| IP | Type | Current | First seen | Last seen |\n"
+            "|---|---|---|---|---|\n",
+            stream
+        );
         for (i = 0; i < shown_ip_count; ++i) {
             const cmaper_history_device_ip_row_t *row = &report->ip_addresses[i];
             fprintf(
@@ -324,13 +446,16 @@ void cmaper_history_render_device(
             );
         }
 
-        fputs("\n## Observations\n\n| Session | Status | IP | Host status | Open TCP | Findings(open/high) | Surfaces |\n", stream);
-        fputs("|---|---|---|---|---:|---:|---:|\n", stream);
+        fputs(
+            "\n### Observations\n\n| Session | Status | IP | Host status | Open TCP | Open findings (high) | Surfaces |\n"
+            "|---|---|---|---|---:|---:|---:|\n",
+            stream
+        );
         for (i = 0; i < shown_obs_count; ++i) {
             const cmaper_history_device_observation_row_t *row = &report->observations[i];
             fprintf(
                 stream,
-                "| %s | %s | %s | %s | %zu | %zu/%zu | %zu |\n",
+                "| %s | %s | %s | %s | %zu | %zu (%zu) | %zu |\n",
                 row->session_id,
                 row->status,
                 row->primary_ip,
@@ -343,58 +468,103 @@ void cmaper_history_render_device(
         }
 
         if (shown_ip_count < report->ip_address_count || shown_obs_count < report->observation_count) {
-            fputs("\n_Compact view: output is truncated, use --view full._\n", stream);
+            fputs(
+                "\n_Notes: output is truncated (use `--view full` for full IP history and observations)._",
+                stream
+            );
+            fputc('\n', stream);
+        }
+
+        fputs("\n## Next Steps\n\n", stream);
+        if (!report->selected_observation_found) {
+            fputs("1. Verify when this device disappeared using `timeline <session-id> <device-id>`.\n", stream);
+            fputs("2. Confirm whether disappearance is expected or a telemetry gap.\n", stream);
+        } else if (report->selected_findings_high_or_worse > 0U) {
+            fputs("1. Prioritize remediation for high/critical findings on this device.\n", stream);
+            fputs("2. Re-scan after fixes to confirm risk reduction.\n", stream);
+        } else if (report->selected_findings_open > 0U || report->selected_management_surfaces > 0U) {
+            fputs("1. Triage remaining open findings and exposed management surfaces.\n", stream);
+            fputs("2. Restrict management exposure to trusted networks where possible.\n", stream);
+        } else {
+            fputs("1. Treat this state as baseline and monitor for drift in the next scan.\n", stream);
+            fputs("2. Keep device inventory metadata current (hostname, ownership, role).\n", stream);
         }
         return;
     }
 
+    cmaper_history_render_heading(stream, use_ansi, "Device");
+
     if (!report->db_available) {
-        fputs("Device report: no history database found.\n", stream);
+        cmaper_history_render_section(stream, use_ansi, "Notes");
+        fputs("  No history database found.\n", stream);
         return;
     }
     if (!report->session_found) {
-        fprintf(stream, "Device report: session '%s' not found.\n", report->session_id);
+        cmaper_history_render_section(stream, use_ansi, "Notes");
+        fprintf(stream, "  Session '%s' not found.\n", report->session_id);
         return;
     }
     if (!report->found) {
-        fprintf(stream, "Device report: device '%s' not found.\n", report->device_id);
+        cmaper_history_render_section(stream, use_ansi, "Notes");
+        fprintf(stream, "  Device '%s' not found.\n", report->device_id);
         return;
     }
 
-    cmaper_history_render_heading(stream, use_ansi, "Device");
-    fprintf(
+    cmaper_history_render_section(stream, use_ansi, "Context");
+    cmaper_history_render_key_value(stream, "Device", report->device_id);
+    cmaper_history_render_key_value(stream, "Session", report->session_id);
+    cmaper_history_render_key_value(stream, "Stable key", report->stable_key);
+    cmaper_history_render_key_value(stream, "Fallback key", report->fallback_key);
+    cmaper_history_render_key_value(stream, "MAC", report->mac_address);
+    cmaper_history_render_key_value(stream, "Vendor", report->mac_vendor);
+
+    cmaper_history_render_section(stream, use_ansi, "Key Takeaways");
+    cmaper_history_render_risk(
         stream,
-        "%s in session %s\nSummary: stable=%s fallback=%s mac=%s vendor=%s\n",
-        report->device_id,
-        report->session_id,
-        report->stable_key,
-        report->fallback_key,
-        report->mac_address,
-        report->mac_vendor
+        use_ansi,
+        cmaper_history_device_risk_level(
+            report->selected_observation_found,
+            report->selected_findings_high_or_worse,
+            report->selected_findings_open,
+            report->selected_management_surfaces
+        ),
+        !report->selected_observation_found
+            ? "Device is not present in the selected session."
+            : (report->selected_findings_high_or_worse > 0U
+                ? "Selected observation has high/critical findings."
+                : ((report->selected_findings_open > 0U || report->selected_management_surfaces > 0U)
+                    ? "Selected observation has open findings or exposed management surfaces."
+                    : "Selected observation has no open findings."))
     );
 
+    cmaper_history_render_section(stream, use_ansi, "Details");
+    fputs("  Selected observation:\n", stream);
     if (report->selected_observation_found) {
         fprintf(
             stream,
-            "  selected-observation ip=%s status=%s hostname=%s open_tcp=%zu findings(open/high)=%zu/%zu surfaces=%zu\n",
+            "    ip=%s  host-status=%s  hostname=%s\n",
             report->selected_primary_ip,
             report->selected_status,
-            report->selected_hostname,
+            report->selected_hostname
+        );
+        fprintf(
+            stream,
+            "    open_tcp=%zu  open findings=%zu (high=%zu)  surfaces=%zu\n",
             report->selected_open_tcp_ports,
             report->selected_findings_open,
             report->selected_findings_high_or_worse,
             report->selected_management_surfaces
         );
     } else {
-        fputs("  selected-observation: not present in this session\n", stream);
+        fputs("    not present in this session\n", stream);
     }
 
-    fprintf(stream, "  ip-history (%zu):\n", report->ip_address_count);
+    fprintf(stream, "  IP history (%zu):\n", report->ip_address_count);
     for (i = 0; i < shown_ip_count; ++i) {
         const cmaper_history_device_ip_row_t *row = &report->ip_addresses[i];
         fprintf(
             stream,
-            "    %s (%s) current=%s first=%s last=%s\n",
+            "    - %s (%s) current=%s first=%s last=%s\n",
             row->ip_address,
             row->address_type,
             row->is_current ? "yes" : "no",
@@ -402,21 +572,13 @@ void cmaper_history_render_device(
             row->last_seen_session_id
         );
     }
-    if (shown_ip_count < report->ip_address_count) {
-        fprintf(
-            stream,
-            "    ... compact view: showing %zu of %zu IP rows\n",
-            shown_ip_count,
-            report->ip_address_count
-        );
-    }
 
-    fprintf(stream, "  observations (%zu):\n", report->observation_count);
+    fprintf(stream, "  Observations (%zu):\n", report->observation_count);
     for (i = 0; i < shown_obs_count; ++i) {
         const cmaper_history_device_observation_row_t *row = &report->observations[i];
         fprintf(
             stream,
-            "    %s [%s] ip=%s host-status=%s open_tcp=%zu findings(open/high)=%zu/%zu surfaces=%zu\n",
+            "    - %s [%s] ip=%s host-status=%s open_tcp=%zu open findings=%zu (high=%zu) surfaces=%zu\n",
             row->session_id,
             row->status,
             row->primary_ip,
@@ -427,13 +589,24 @@ void cmaper_history_render_device(
             row->management_surfaces
         );
     }
-    if (shown_obs_count < report->observation_count) {
-        fprintf(
-            stream,
-            "    ... compact view: showing %zu of %zu observations\n",
-            shown_obs_count,
-            report->observation_count
-        );
+
+    if (shown_ip_count < report->ip_address_count || shown_obs_count < report->observation_count) {
+        cmaper_history_render_section(stream, use_ansi, "Notes");
+        fputs("  Output is truncated. Use --view full for complete IP history and observations.\n", stream);
+    }
+
+    cmaper_history_render_section(stream, use_ansi, "Next Steps");
+    if (!report->selected_observation_found) {
+        fputs("  1. Verify when this device disappeared using timeline <session-id> <device-id>.\n", stream);
+        fputs("  2. Confirm whether disappearance is expected or a telemetry gap.\n", stream);
+    } else if (report->selected_findings_high_or_worse > 0U) {
+        fputs("  1. Prioritize remediation for high/critical findings on this device.\n", stream);
+        fputs("  2. Re-scan after fixes to verify risk reduction.\n", stream);
+    } else if (report->selected_findings_open > 0U || report->selected_management_surfaces > 0U) {
+        fputs("  1. Triage remaining open findings and exposed management surfaces.\n", stream);
+        fputs("  2. Restrict management exposure to trusted networks where possible.\n", stream);
+    } else {
+        fputs("  1. Treat this state as baseline and monitor for drift in the next scan.\n", stream);
+        fputs("  2. Keep inventory metadata current (hostname, ownership, role).\n", stream);
     }
 }
-

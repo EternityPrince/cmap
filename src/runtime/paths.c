@@ -47,13 +47,13 @@ static const char *cmaper_runtime_getenv_nonempty(const char *name) {
 }
 
 static const char *cmaper_runtime_getenv_compat(const char *nm_name, const char *cm_name) {
-    const char *value = cmaper_runtime_getenv_nonempty(nm_name);
+    const char *value = cmaper_runtime_getenv_nonempty(cm_name);
 
     if (value != NULL) {
         return value;
     }
 
-    return cmaper_runtime_getenv_nonempty(cm_name);
+    return cmaper_runtime_getenv_nonempty(nm_name);
 }
 
 static cmaper_err_t cmaper_runtime_copy_string(

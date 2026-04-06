@@ -26,7 +26,8 @@ cmaper_err_t cmaper_snapshot_write_scan_data(
         return CMAPER_ERR_INVALID_ARGUMENT;
     }
 
-    if (request->scan_result->discovery_xml == NULL || request->scan_result->discovery_xml_size == 0) {
+    if ((request->scan_result->discovery_xml == NULL || request->scan_result->discovery_xml_size == 0)
+        && request->scan_result->discovery_xml_path[0] == '\0') {
         return CMAPER_ERR_PARSE;
     }
 
@@ -37,12 +38,20 @@ cmaper_err_t cmaper_snapshot_write_scan_data(
 
     cmaper_nmap_xml_document_init(&discovery_doc);
     cmaper_nmap_xml_diag_clear(&discovery_diag);
-    rc = cmaper_nmap_xml_parse_memory(
-        request->scan_result->discovery_xml,
-        request->scan_result->discovery_xml_size,
-        &discovery_doc,
-        &discovery_diag
-    );
+    if (request->scan_result->discovery_xml != NULL && request->scan_result->discovery_xml_size > 0) {
+        rc = cmaper_nmap_xml_parse_memory(
+            request->scan_result->discovery_xml,
+            request->scan_result->discovery_xml_size,
+            &discovery_doc,
+            &discovery_diag
+        );
+    } else {
+        rc = cmaper_nmap_xml_parse_file(
+            request->scan_result->discovery_xml_path,
+            &discovery_doc,
+            &discovery_diag
+        );
+    }
     if (rc != CMAPER_OK) {
         cmaper_log(
             logger,

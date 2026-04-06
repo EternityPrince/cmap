@@ -28,4 +28,10 @@ cmaper_err_t cmaper_nmap_xml_parse_memory(
     cmaper_nmap_xml_diag_t *diag
 );
 
+cmaper_err_t cmaper_nmap_xml_parse_file(
+    const char *xml_path,
+    cmaper_nmap_xml_document_t *document,
+    cmaper_nmap_xml_diag_t *diag
+);
+
 #endif

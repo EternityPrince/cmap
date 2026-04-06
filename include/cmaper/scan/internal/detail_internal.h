@@ -11,7 +11,7 @@
 #define CMAPER_SCAN_SUDO_BIN "/usr/bin/sudo"
 
 #define CMAPER_SCAN_DETAIL_CMD_MAX_ARGS 48
-#define CMAPER_SCAN_DETAIL_CMD_ARG_CAP 256
+#define CMAPER_SCAN_DETAIL_CMD_ARG_CAP 512
 #define CMAPER_SCAN_DETAIL_CMD_RENDER_CAP 2048
 #define CMAPER_SCAN_DETAIL_PROGRESS_INTERVAL_MS 1000LL
 #define CMAPER_SCAN_DETAIL_PROGRESS_SLEEP_NS 250000000L
@@ -105,6 +105,7 @@ void cmaper_scan_detail_spoof_policy_resolve(
 cmaper_err_t cmaper_scan_detail_build_probe_command(
     const cmaper_scan_detail_request_t *request,
     const cmaper_scan_detail_target_t *target,
+    const char *xml_output_path,
     const cmaper_scan_detail_spoof_policy_t *spoof_policy,
     cmaper_scan_detail_command_t *command
 );
@@ -113,6 +114,7 @@ cmaper_err_t cmaper_scan_detail_build_probe_command_with_transport(
     const cmaper_scan_detail_request_t *request,
     const cmaper_scan_detail_target_t *target,
     cmaper_scan_detail_probe_transport_t transport,
+    const char *xml_output_path,
     const cmaper_scan_detail_spoof_policy_t *spoof_policy,
     cmaper_scan_detail_command_t *command
 );
@@ -122,6 +124,7 @@ cmaper_err_t cmaper_scan_detail_build_enrichment_like_command(
     const char *ip,
     const int *ports,
     size_t port_count,
+    const char *xml_output_path,
     const cmaper_scan_detail_spoof_policy_t *spoof_policy,
     cmaper_scan_detail_command_t *command
 );
@@ -131,8 +134,7 @@ cmaper_err_t cmaper_scan_detail_run_command(
     const cmaper_scan_detail_command_t *command,
     const char *phase_label,
     int heartbeat_seconds,
-    char **out_stdout_data,
-    size_t *out_stdout_size,
+    const char *xml_output_path,
     char **out_stderr_data,
     size_t *out_stderr_size
 );

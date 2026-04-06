@@ -32,6 +32,14 @@ typedef struct {
 } cmaper_history_fingerprint_signal_t;
 
 typedef struct {
+    char script_id[CMAPER_HISTORY_KEY_CAP];
+    char output[CMAPER_HISTORY_DETAIL_CAP];
+    bool has_service_context;
+    char protocol[CMAPER_HISTORY_PROTOCOL_CAP];
+    int port;
+} cmaper_history_script_result_signal_t;
+
+typedef struct {
     char key[CMAPER_HISTORY_KEY_CAP];
     char severity[CMAPER_HISTORY_SEVERITY_CAP];
     char state[CMAPER_HISTORY_STATE_CAP];
@@ -61,6 +69,8 @@ typedef struct {
     size_t port_count;
     cmaper_history_fingerprint_signal_t *fingerprints;
     size_t fingerprint_count;
+    cmaper_history_script_result_signal_t *script_results;
+    size_t script_result_count;
     cmaper_history_finding_signal_t *findings;
     size_t finding_count;
     cmaper_history_surface_signal_t *surfaces;

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cmaper/core/sqlite.h"
 #include "cmaper/history/fuzzy.h"
 #include "cmaper/platform/fs.h"
 
@@ -12,39 +13,15 @@ cmaper_err_t cmaper_history_prepare(
     const char *sql,
     sqlite3_stmt **out_stmt
 ) {
-    int rc;
-
-    if (db == NULL || sql == NULL || out_stmt == NULL) {
-        return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    *out_stmt = NULL;
-    rc = sqlite3_prepare_v2(db, sql, -1, out_stmt, NULL);
-    if (rc != SQLITE_OK) {
-        return CMAPER_ERR_IO;
-    }
-
-    return CMAPER_OK;
+    return cmaper_sqlite_prepare(db, sql, out_stmt);
 }
 
 void cmaper_history_finalize(sqlite3_stmt **stmt) {
-    if (stmt == NULL || *stmt == NULL) {
-        return;
-    }
-
-    sqlite3_finalize(*stmt);
-    *stmt = NULL;
+    cmaper_sqlite_finalize(stmt);
 }
 
 cmaper_err_t cmaper_history_bind_int(sqlite3_stmt *stmt, int index, int value) {
-    if (stmt == NULL) {
-        return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    if (sqlite3_bind_int(stmt, index, value) != SQLITE_OK) {
-        return CMAPER_ERR_IO;
-    }
-    return CMAPER_OK;
+    return cmaper_sqlite_bind_int(stmt, index, value);
 }
 
 cmaper_err_t cmaper_history_bind_int64(
@@ -52,14 +29,7 @@ cmaper_err_t cmaper_history_bind_int64(
     int index,
     sqlite3_int64 value
 ) {
-    if (stmt == NULL) {
-        return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    if (sqlite3_bind_int64(stmt, index, value) != SQLITE_OK) {
-        return CMAPER_ERR_IO;
-    }
-    return CMAPER_OK;
+    return cmaper_sqlite_bind_int64(stmt, index, value);
 }
 
 cmaper_err_t cmaper_history_bind_text(
@@ -67,14 +37,7 @@ cmaper_err_t cmaper_history_bind_text(
     int index,
     const char *value
 ) {
-    if (stmt == NULL || value == NULL) {
-        return CMAPER_ERR_INVALID_ARGUMENT;
-    }
-
-    if (sqlite3_bind_text(stmt, index, value, -1, SQLITE_TRANSIENT) != SQLITE_OK) {
-        return CMAPER_ERR_IO;
-    }
-    return CMAPER_OK;
+    return cmaper_sqlite_bind_text(stmt, index, value);
 }
 
 void cmaper_history_copy_string(char *out, size_t out_cap, const char *value) {
@@ -250,6 +213,8 @@ void cmaper_history_host_snapshot_init(cmaper_history_host_snapshot_t *snapshot)
     snapshot->port_count = 0;
     snapshot->fingerprints = NULL;
     snapshot->fingerprint_count = 0;
+    snapshot->script_results = NULL;
+    snapshot->script_result_count = 0;
     snapshot->findings = NULL;
     snapshot->finding_count = 0;
     snapshot->surfaces = NULL;
@@ -266,6 +231,9 @@ void cmaper_history_host_snapshot_dispose(cmaper_history_host_snapshot_t *snapsh
     }
     if (snapshot->fingerprints != NULL) {
         free(snapshot->fingerprints);
+    }
+    if (snapshot->script_results != NULL) {
+        free(snapshot->script_results);
     }
     if (snapshot->findings != NULL) {
         free(snapshot->findings);

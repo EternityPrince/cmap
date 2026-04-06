@@ -99,13 +99,23 @@ Termux scaffold:
 
 ## Environment Variables
 
+Primary namespace:
+
+- `CMAPER_NMAP_BIN`
+- `CMAPER_NMAP_SCRIPTS_DIR`
+- `CMAPER_DB_PATH`
+- `CMAPER_XML_OUTPUT_DIR`
+- `CMAPER_DATA_DIR`
+
+Compatibility aliases are still supported:
+
 - `NMAPER_NMAP_BIN`
 - `NMAPER_NMAP_SCRIPTS_DIR`
 - `NMAPER_DB_PATH`
 - `NMAPER_XML_OUTPUT_DIR`
 - `NMAPER_DATA_DIR`
 
-(`CMAPER_*` compatibility aliases are supported for runtime path variables.)
+Prefer `CMAPER_*` in new scripts and automation.
 
 ## E2E Fake Nmap Scenario
 

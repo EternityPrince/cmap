@@ -56,4 +56,44 @@ int cmaper_history_device_ip_row_compare(const void *left, const void *right);
 int cmaper_history_device_row_compare(const void *left, const void *right);
 int cmaper_history_snapshot_compare(const void *left, const void *right);
 
+void cmaper_history_detail_text_clear(char *out, size_t out_cap);
+void cmaper_history_detail_text_append(char *out, size_t out_cap, const char *token);
+void cmaper_history_detail_text_append_line(char *out, size_t out_cap, const char *line);
+void cmaper_history_detail_text_compact_copy(
+    char *out,
+    size_t out_cap,
+    const char *value,
+    size_t max_chars
+);
+
+cmaper_err_t cmaper_history_load_ports(
+    sqlite3 *db,
+    sqlite3_int64 host_observation_id,
+    cmaper_history_host_snapshot_t *snapshot
+);
+
+cmaper_err_t cmaper_history_load_fingerprints(
+    sqlite3 *db,
+    sqlite3_int64 host_observation_id,
+    cmaper_history_host_snapshot_t *snapshot
+);
+
+cmaper_err_t cmaper_history_load_script_results(
+    sqlite3 *db,
+    sqlite3_int64 host_observation_id,
+    cmaper_history_host_snapshot_t *snapshot
+);
+
+cmaper_err_t cmaper_history_load_findings(
+    sqlite3 *db,
+    sqlite3_int64 host_observation_id,
+    cmaper_history_host_snapshot_t *snapshot
+);
+
+cmaper_err_t cmaper_history_load_surfaces(
+    sqlite3 *db,
+    sqlite3_int64 host_observation_id,
+    cmaper_history_host_snapshot_t *snapshot
+);
+
 #endif

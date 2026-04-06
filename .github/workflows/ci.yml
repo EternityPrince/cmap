@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libxml2-dev libsqlite3-dev
+
+      - name: Build (Makefile)
+        run: make clean && make -j"$(nproc)"
+
+      - name: End-to-end scenario
+        run: tests/e2e/run_fake_nmap_scenario.sh
+
+      - name: Integration checks
+        run: tests/integration/run.sh
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake pkg-config libxml2-dev libsqlite3-dev
+
+      - name: Build with ASAN+UBSAN (CMake)
+        run: |
+          cmake -S . -B build-sanitized \
+            -DCMAPER_WARNINGS_AS_ERRORS=ON \
+            -DCMAPER_ENABLE_ASAN=ON \
+            -DCMAPER_ENABLE_UBSAN=ON
+          cmake --build build-sanitized -j"$(nproc)"
+
+      - name: End-to-end scenario (sanitized)
+        env:
+          CMAPER_BIN: ${{ github.workspace }}/build-sanitized/cmaper
+        run: tests/e2e/run_fake_nmap_scenario.sh
+
+      - name: Integration checks (sanitized)
+        env:
+          CMAPER_BIN: ${{ github.workspace }}/build-sanitized/cmaper
+        run: tests/integration/run.sh

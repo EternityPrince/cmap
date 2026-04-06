@@ -7,8 +7,7 @@
 #include "cmaper/scan/nmap_xml_utils.h"
 
 cmaper_err_t cmaper_scan_detail_target_extract_probe_ports(
-    const char *probe_xml,
-    size_t probe_xml_size,
+    const char *probe_xml_path,
     const char *target_ip,
     int **out_ports,
     size_t *out_port_count
@@ -19,7 +18,7 @@ cmaper_err_t cmaper_scan_detail_target_extract_probe_ports(
     size_t i;
     const cmaper_nmap_xml_host_t *fallback_up_host = NULL;
 
-    if (probe_xml == NULL || target_ip == NULL || out_ports == NULL || out_port_count == NULL) {
+    if (probe_xml_path == NULL || target_ip == NULL || out_ports == NULL || out_port_count == NULL) {
         return CMAPER_ERR_INVALID_ARGUMENT;
     }
 
@@ -29,7 +28,7 @@ cmaper_err_t cmaper_scan_detail_target_extract_probe_ports(
     cmaper_nmap_xml_document_init(&document);
     cmaper_nmap_xml_diag_clear(&diag);
 
-    rc = cmaper_nmap_xml_parse_memory(probe_xml, probe_xml_size, &document, &diag);
+    rc = cmaper_nmap_xml_parse_file(probe_xml_path, &document, &diag);
     if (rc != CMAPER_OK) {
         cmaper_nmap_xml_document_dispose(&document);
         return rc;
@@ -61,8 +60,7 @@ cmaper_err_t cmaper_scan_detail_target_extract_probe_ports(
 }
 
 bool cmaper_scan_detail_target_count_scripts(
-    const char *xml_data,
-    size_t xml_size,
+    const char *xml_path,
     const char *target_ip,
     size_t *out_scripts_count
 ) {
@@ -74,7 +72,7 @@ bool cmaper_scan_detail_target_count_scripts(
     size_t scripts_count = 0;
     cmaper_err_t rc;
 
-    if (xml_data == NULL || xml_size == 0 || target_ip == NULL || out_scripts_count == NULL) {
+    if (xml_path == NULL || target_ip == NULL || out_scripts_count == NULL) {
         return false;
     }
 
@@ -82,7 +80,7 @@ bool cmaper_scan_detail_target_count_scripts(
     cmaper_nmap_xml_document_init(&document);
     cmaper_nmap_xml_diag_clear(&diag);
 
-    rc = cmaper_nmap_xml_parse_memory(xml_data, xml_size, &document, &diag);
+    rc = cmaper_nmap_xml_parse_file(xml_path, &document, &diag);
     if (rc != CMAPER_OK) {
         cmaper_nmap_xml_document_dispose(&document);
         return false;

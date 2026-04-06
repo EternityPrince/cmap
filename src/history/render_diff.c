@@ -2,6 +2,22 @@
 
 #include <stdio.h>
 
+static const char *cmaper_history_diff_risk_level(const cmaper_history_diff_report_t *report) {
+    if (report == NULL) {
+        return "info";
+    }
+    if (report->summary.findings_high_opened > 0U) {
+        return "critical";
+    }
+    if (report->summary.findings_opened > report->summary.findings_resolved
+        || report->summary.management_added > report->summary.management_removed
+        || report->summary.hosts_added > 0U
+        || report->summary.hosts_removed > 0U) {
+        return "warn";
+    }
+    return "ok";
+}
+
 void cmaper_history_render_diff(
     FILE *stream,
     const cmaper_history_render_options_t *options,
@@ -114,14 +130,21 @@ void cmaper_history_render_diff(
     }
 
     if (format == CMAPER_OUTPUT_FORMAT_MARKDOWN) {
+        fputs("# Diff\n\n## Context\n\n", stream);
+        fprintf(stream, "- Database: **%s**\n", report->db_available ? "ready" : "missing");
+        fprintf(stream, "- From session: `%s`\n", report->from_session_id);
+        fprintf(stream, "- To session: `%s`\n", report->to_session_id);
+        fprintf(stream, "- View: **%s**\n", cmaper_output_view_name(view));
+        fprintf(stream, "- Summary-only mode: **%s**\n", summary_only ? "yes" : "no");
+
         if (!report->db_available) {
-            fputs("# Diff\n\nNo history database found.\n", stream);
+            fputs("\n## Notes\n\nNo history database found.\n", stream);
             return;
         }
         if (!report->from_found || !report->to_found) {
             fprintf(
                 stream,
-                "# Diff\n\nSession not found: from `%s` (%s), to `%s` (%s)\n",
+                "\n## Notes\n\nSession lookup failed: from `%s` (%s), to `%s` (%s)\n",
                 report->from_session_id,
                 report->from_found ? "found" : "missing",
                 report->to_session_id,
@@ -130,27 +153,46 @@ void cmaper_history_render_diff(
             return;
         }
 
+        fputs("\n## Key Takeaways\n\n", stream);
         fprintf(
             stream,
-            "# Diff `%s` -> `%s`\n\n- Hosts from/to: **%zu / %zu**\n- Added/Removed/Changed/Moved: **%zu / %zu / %zu / %zu**\n- Ports +/−: **%zu / %zu**\n- Findings opened/resolved/high-opened: **%zu / %zu / %zu**\n- Management +/−: **%zu / %zu**\n\n",
-            report->from_session_id,
-            report->to_session_id,
-            report->summary.hosts_from,
-            report->summary.hosts_to,
+            "- **Risk:** **%s**\n",
+            report->summary.findings_high_opened > 0U
+                ? "CRITICAL"
+                : ((report->summary.findings_opened > report->summary.findings_resolved
+                    || report->summary.management_added > report->summary.management_removed)
+                    ? "WARN"
+                    : "OK")
+        );
+        if (report->summary.findings_high_opened > 0U) {
+            fputs("- Compared to previous scan, new high-risk findings appeared.\n", stream);
+        }
+        fprintf(
+            stream,
+            "- Host changes: **%zu changed**, **%zu added**, **%zu removed**, **%zu moved**\n",
+            report->summary.hosts_changed,
             report->summary.hosts_added,
             report->summary.hosts_removed,
-            report->summary.hosts_changed,
-            report->summary.hosts_moved,
-            report->summary.ports_added,
-            report->summary.ports_removed,
+            report->summary.hosts_moved
+        );
+        fprintf(
+            stream,
+            "- Findings drift: opened **%zu**, resolved **%zu**, high/critical opened **%zu**\n",
             report->summary.findings_opened,
             report->summary.findings_resolved,
-            report->summary.findings_high_opened,
+            report->summary.findings_high_opened
+        );
+        fprintf(
+            stream,
+            "- Management surfaces: added **%zu**, removed **%zu**\n",
             report->summary.management_added,
             report->summary.management_removed
         );
 
-        fputs("## Alerts\n\n", stream);
+        fputs("\n## Details\n\n### Alerts\n\n", stream);
+        if (report->alert_count == 0U) {
+            fputs("- none\n", stream);
+        }
         for (i = 0; i < report->alert_count; ++i) {
             fprintf(
                 stream,
@@ -162,13 +204,13 @@ void cmaper_history_render_diff(
                 report->alerts[i].host_key[0] != '\0' ? report->alerts[i].host_key : ""
             );
         }
-        if (report->alert_count == 0) {
-            fputs("- none\n", stream);
-        }
 
-        if (!summary_only && shown_changed_count > 0) {
-            fputs("\n## Changed hosts\n\n| Host | Reasons | Ports +/− | Findings +/−/high+ | Mgmt +/− |\n", stream);
-            fputs("|---|---|---:|---:|---:|\n", stream);
+        if (!summary_only) {
+            fputs(
+                "\n### Changed Hosts\n\n| Host | Change reasons | Ports (+/-) | Findings (+/-/high+) | Mgmt (+/-) |\n"
+                "|---|---|---:|---:|---:|\n",
+                stream
+            );
             for (i = 0; i < shown_changed_count; ++i) {
                 const cmaper_history_changed_host_t *row = &report->changed_hosts[i];
                 fprintf(stream, "| %s | ", row->host_key);
@@ -186,73 +228,110 @@ void cmaper_history_render_diff(
                 );
             }
             if (!details_enabled && shown_changed_count < report->changed_host_count) {
-                fprintf(
+                cmaper_history_render_truncated_note(
                     stream,
-                    "\n_Compact view: showing first %zu of %zu changed hosts._\n",
+                    true,
                     shown_changed_count,
-                    report->changed_host_count
+                    report->changed_host_count,
+                    "changed hosts"
                 );
             }
+        }
+
+        fputs("\n## Next Steps\n\n", stream);
+        if (report->summary.findings_high_opened > 0U) {
+            fputs("1. Triage hosts with newly opened high/critical findings first.\n", stream);
+            fputs("2. Re-run scan after mitigation to verify the high-risk count decreases.\n", stream);
+        } else if (report->summary.findings_opened > report->summary.findings_resolved
+            || report->summary.management_added > report->summary.management_removed) {
+            fputs("1. Review why open findings or management exposure increased between sessions.\n", stream);
+            fputs("2. Create a short remediation plan for the top changed hosts.\n", stream);
+        } else {
+            fputs("1. Use this diff as a baseline and continue regular drift monitoring.\n", stream);
+            fputs("2. Spot-check a few changed hosts to confirm expected operational changes.\n", stream);
         }
         return;
     }
 
+    cmaper_history_render_heading(stream, use_ansi, "Diff");
+    cmaper_history_render_section(stream, use_ansi, "Context");
+    cmaper_history_render_key_value(stream, "Database", report->db_available ? "ready" : "missing");
+    cmaper_history_render_key_value(stream, "From session", report->from_session_id);
+    cmaper_history_render_key_value(stream, "To session", report->to_session_id);
+    cmaper_history_render_key_value(stream, "View", cmaper_output_view_name(view));
+    cmaper_history_render_key_value(stream, "Summary-only mode", summary_only ? "yes" : "no");
+
     if (!report->db_available) {
-        fputs("Diff: no history database found.\n", stream);
+        cmaper_history_render_section(stream, use_ansi, "Notes");
+        fputs("  No history database found.\n", stream);
         return;
     }
     if (!report->from_found || !report->to_found) {
+        cmaper_history_render_section(stream, use_ansi, "Notes");
         fprintf(
             stream,
-            "Diff: session not found (from=%s found=%s, to=%s found=%s)\n",
+            "  Session lookup failed: from=%s (%s), to=%s (%s)\n",
             report->from_session_id,
-            report->from_found ? "yes" : "no",
+            report->from_found ? "found" : "missing",
             report->to_session_id,
-            report->to_found ? "yes" : "no"
+            report->to_found ? "found" : "missing"
         );
         return;
     }
 
-    cmaper_history_render_heading(stream, use_ansi, "Diff");
+    cmaper_history_render_section(stream, use_ansi, "Key Takeaways");
+    cmaper_history_render_risk(
+        stream,
+        use_ansi,
+        cmaper_history_diff_risk_level(report),
+        report->summary.findings_high_opened > 0U
+            ? "Compared to previous scan, new high-risk findings appeared."
+            : ((report->summary.findings_opened > report->summary.findings_resolved
+                || report->summary.management_added > report->summary.management_removed)
+                ? "Security drift indicates elevated risk compared to the previous session."
+                : "No immediate high-risk drift signal in this diff.")
+    );
     fprintf(
         stream,
-        "Summary: %s -> %s\n  hosts from/to=%zu/%zu added=%zu removed=%zu changed=%zu moved=%zu unchanged=%zu\n"
-        "  ports +%zu/-%zu fingerprints +%zu/-%zu findings opened/resolved/high-opened=%zu/%zu/%zu management +%zu/-%zu\n",
-        report->from_session_id,
-        report->to_session_id,
-        report->summary.hosts_from,
-        report->summary.hosts_to,
+        "  Host changes: changed=%zu added=%zu removed=%zu moved=%zu unchanged=%zu\n",
+        report->summary.hosts_changed,
         report->summary.hosts_added,
         report->summary.hosts_removed,
-        report->summary.hosts_changed,
         report->summary.hosts_moved,
-        report->summary.hosts_unchanged,
-        report->summary.ports_added,
-        report->summary.ports_removed,
-        report->summary.fingerprints_added,
-        report->summary.fingerprints_removed,
+        report->summary.hosts_unchanged
+    );
+    fprintf(
+        stream,
+        "  Findings drift: opened=%zu resolved=%zu high-opened=%zu\n",
         report->summary.findings_opened,
         report->summary.findings_resolved,
-        report->summary.findings_high_opened,
+        report->summary.findings_high_opened
+    );
+    fprintf(
+        stream,
+        "  Management surfaces: +%zu/-%zu\n",
         report->summary.management_added,
         report->summary.management_removed
     );
 
-    cmaper_history_render_alerts_text(stream, report->alerts, report->alert_count);
+    cmaper_history_render_section(stream, use_ansi, "Details");
+    fputs("Alerts\n", stream);
+    cmaper_history_render_alerts_text(stream, use_ansi, report->alerts, report->alert_count);
 
     if (!summary_only) {
-        fprintf(stream, "Changed hosts: %zu\n", report->changed_host_count);
+        fprintf(stream, "Changed hosts (shown %zu):\n", shown_changed_count);
+        if (shown_changed_count == 0U) {
+            fputs("  - none\n", stream);
+        }
         for (i = 0; i < shown_changed_count; ++i) {
             const cmaper_history_changed_host_t *row = &report->changed_hosts[i];
-            fprintf(stream, "  %s reasons=", row->host_key);
+            fprintf(stream, "  - %s reasons=", row->host_key);
             cmaper_history_render_reason_mask_text(stream, row->reason_mask);
             fprintf(
                 stream,
-                " ports +%zu/-%zu fp +%zu/-%zu findings +%zu/-%zu high+%zu mgmt +%zu/-%zu\n",
+                " ports +%zu/-%zu findings +%zu/-%zu high+%zu mgmt +%zu/-%zu\n",
                 row->ports_added,
                 row->ports_removed,
-                row->fingerprints_added,
-                row->fingerprints_removed,
                 row->findings_opened,
                 row->findings_resolved,
                 row->findings_high_opened,
@@ -261,13 +340,26 @@ void cmaper_history_render_diff(
             );
         }
         if (!details_enabled && shown_changed_count < report->changed_host_count) {
-            fprintf(
+            cmaper_history_render_truncated_note(
                 stream,
-                "  ... compact view: showing %zu of %zu changed hosts (use --view full)\n",
+                false,
                 shown_changed_count,
-                report->changed_host_count
+                report->changed_host_count,
+                "changed hosts"
             );
         }
     }
-}
 
+    cmaper_history_render_section(stream, use_ansi, "Next Steps");
+    if (report->summary.findings_high_opened > 0U) {
+        fputs("  1. Triage hosts with newly opened high/critical findings first.\n", stream);
+        fputs("  2. Re-run scan after mitigation to verify the high-risk count decreases.\n", stream);
+    } else if (report->summary.findings_opened > report->summary.findings_resolved
+        || report->summary.management_added > report->summary.management_removed) {
+        fputs("  1. Review why open findings or management exposure increased between sessions.\n", stream);
+        fputs("  2. Create a short remediation plan for the top changed hosts.\n", stream);
+    } else {
+        fputs("  1. Use this diff as a baseline and continue regular drift monitoring.\n", stream);
+        fputs("  2. Spot-check a few changed hosts to confirm expected operational changes.\n", stream);
+    }
+}

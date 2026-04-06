@@ -25,7 +25,7 @@ void cmaper_cli_config_init(cmaper_cli_config_t *config) {
     config->output.view = CMAPER_OUTPUT_VIEW_COMPACT;
     config->output.target = CMAPER_OUTPUT_TARGET_TERMINAL;
     config->output.target_path = NULL;
-    config->output.log_level = CMAPER_LOG_PHASE;
+    config->output.log_level = CMAPER_LOG_WAIT;
     config->output.use_color = true;
 
     config->dev_mode = false;
