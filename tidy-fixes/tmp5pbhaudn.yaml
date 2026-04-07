@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/platform/clipboard.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''stdio.h'' file not found'
+      FilePath:        'src/platform/clipboard.c'
+      FileOffset:      49
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/platform/clipboard.c'
+          FileOffset:      49
+          Length:          9
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

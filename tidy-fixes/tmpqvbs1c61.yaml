@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/history/fuzzy.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''arpa/inet.h'' file not found'
+      FilePath:        'src/history/fuzzy.c'
+      FileOffset:      44
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/history/fuzzy.c'
+          FileOffset:      44
+          Length:          13
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

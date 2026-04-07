@@ -3,7 +3,8 @@
 
 #include <stdio.h>
 
-void cmaper_cli_print_help(FILE *stream, const char *program_name, const char *topic);
+void cmaper_cli_print_help(FILE *stream, const char *program_name,
+                           const char *topic);
 void cmaper_cli_print_version(FILE *stream, const char *program_name);
 
 #endif

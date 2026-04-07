@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/cli/raw.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''string.h'' file not found'
+      FilePath:        'src/cli/raw.c'
+      FileOffset:      38
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/cli/raw.c'
+          FileOffset:      38
+          Length:          10
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

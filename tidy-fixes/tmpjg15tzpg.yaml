@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/scan/nmap_xml_utils.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''arpa/inet.h'' file not found'
+      FilePath:        'src/scan/nmap_xml_utils.c'
+      FileOffset:      50
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/scan/nmap_xml_utils.c'
+          FileOffset:      50
+          Length:          13
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

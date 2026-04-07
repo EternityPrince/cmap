@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/scan/runner.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''stdio.h'' file not found'
+      FilePath:        'include/cmaper/scan/runner.h'
+      FileOffset:      109
+      Replacements:    []
+      Ranges:
+        - FilePath:        'include/cmaper/scan/runner.h'
+          FileOffset:      109
+          Length:          9
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

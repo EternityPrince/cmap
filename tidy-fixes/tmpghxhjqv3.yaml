@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/security/nmap_extract.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''stdlib.h'' file not found'
+      FilePath:        'src/security/nmap_extract.c'
+      FileOffset:      52
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/security/nmap_extract.c'
+          FileOffset:      52
+          Length:          10
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

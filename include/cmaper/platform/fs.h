@@ -11,6 +11,7 @@ bool cmaper_fs_path_is_directory(const char *path);
 bool cmaper_fs_path_is_executable(const char *path);
 cmaper_err_t cmaper_fs_ensure_directory(const char *path);
 cmaper_err_t cmaper_fs_ensure_directory_recursive(const char *path);
-cmaper_err_t cmaper_fs_parent_directory(const char *path, char *out, size_t out_cap);
+cmaper_err_t cmaper_fs_parent_directory(const char *path, char *out,
+                                        size_t out_cap);
 
 #endif

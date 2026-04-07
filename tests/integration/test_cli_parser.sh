@@ -43,4 +43,16 @@ assert_fails_with "not valid for mode 'sessions'" \
 assert_fails_with "cannot be used together" \
     "$BIN" scan --target 10.0.0.0/24 --all-ports --no-all-ports
 
+assert_fails_with "not valid for mode 'sessions'" \
+    "$BIN" sessions --window 30d
+
+assert_fails_with "not valid for mode 'sessions'" \
+    "$BIN" sessions --changes-only
+
+assert_fails_with "invalid value for '--window'" \
+    "$BIN" device --session s --device d --window abc
+
+assert_fails_with "must be a positive day count" \
+    "$BIN" device --session s --device d --window 0d
+
 echo "test_cli_parser: ok"

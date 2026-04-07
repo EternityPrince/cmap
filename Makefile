@@ -20,10 +20,13 @@ SRC_LIST_FILE ?= sources.list
 SRC ?= $(shell sed -e '/^[[:space:]]*$$/d' $(SRC_LIST_FILE))
 
 OBJ := $(SRC:src/%.c=$(OBJ_DIR)/%.o)
+DEP := $(OBJ:.o=.d)
 
 .PHONY: all clean lsp
 
 all: $(BIN)
+
+-include $(DEP)
 
 $(BIN): $(OBJ)
 	mkdir -p $(dir $@)
@@ -31,7 +34,7 @@ $(BIN): $(OBJ)
 
 $(OBJ_DIR)/%.o: src/%.c
 	mkdir -p $(dir $@)
-	$(CC) $(THREAD_FLAGS) $(CPPFLAGS) $(XML2_CFLAGS) $(SQLITE_CFLAGS) $(CFLAGS) -c $< -o $@
+	$(CC) $(THREAD_FLAGS) $(CPPFLAGS) $(XML2_CFLAGS) $(SQLITE_CFLAGS) $(CFLAGS) -MMD -MP -c $< -o $@
 
 clean:
 	rm -rf $(BUILD_DIR)

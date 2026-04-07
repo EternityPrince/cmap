@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/history/service.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''stdio.h'' file not found'
+      FilePath:        'include/cmaper/history/internal/service_internal.h'
+      FileOffset:      133
+      Replacements:    []
+      Ranges:
+        - FilePath:        'include/cmaper/history/internal/service_internal.h'
+          FileOffset:      133
+          Length:          9
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

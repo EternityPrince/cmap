@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/history/domain.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''stdlib.h'' file not found'
+      FilePath:        'src/history/domain.c'
+      FileOffset:      45
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/history/domain.c'
+          FileOffset:      45
+          Length:          10
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

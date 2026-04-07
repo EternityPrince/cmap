@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/scan/heartbeat.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''time.h'' file not found'
+      FilePath:        'src/scan/heartbeat.c'
+      FileOffset:      45
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/scan/heartbeat.c'
+          FileOffset:      45
+          Length:          8
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

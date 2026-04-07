@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/platform/fs.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''errno.h'' file not found'
+      FilePath:        'src/platform/fs.c'
+      FileOffset:      42
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/platform/fs.c'
+          FileOffset:      42
+          Length:          9
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

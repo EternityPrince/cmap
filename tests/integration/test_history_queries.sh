@@ -74,4 +74,16 @@ run_quiet posture --session "$SESSION_NEW" --format json >"$TMP_ROOT/out/posture
 assert_contains "$TMP_ROOT/out/posture.json" "$SESSION_NEW"
 assert_contains "$TMP_ROOT/out/posture.json" "\"alerts\""
 
+run_quiet device --session "$SESSION_NEW" --device 2 --window 30d --format json \
+    >"$TMP_ROOT/out/device-window.json"
+assert_contains "$TMP_ROOT/out/device-window.json" "\"change_events\""
+assert_contains "$TMP_ROOT/out/device-window.json" "\"window_days\":30"
+assert_contains "$TMP_ROOT/out/device-window.json" "\"event_type\":\"ip-changed\""
+assert_contains "$TMP_ROOT/out/device-window.json" "\"event_type\":\"port-opened\""
+assert_contains "$TMP_ROOT/out/device-window.json" "\"event_type\":\"hostname-changed\""
+
+run_quiet device --session "$SESSION_NEW" --device 1 --window 30d --changes-only \
+    >"$TMP_ROOT/out/device-changes-only.txt"
+assert_contains "$TMP_ROOT/out/device-changes-only.txt" "Change Timeline"
+
 echo "test_history_queries: ok"

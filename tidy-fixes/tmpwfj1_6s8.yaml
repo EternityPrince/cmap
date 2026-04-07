@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/scan/artifact.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''ctype.h'' file not found'
+      FilePath:        'src/scan/artifact.c'
+      FileOffset:      44
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/scan/artifact.c'
+          FileOffset:      44
+          Length:          9
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

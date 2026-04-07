@@ -10,45 +10,29 @@
 #define CMAPER_SCAN_ARTIFACT_PATH_CAP 2048
 
 typedef struct {
-    bool save_discovery_xml;
-    bool save_host_xml;
-    const char *session_id;
+  bool save_discovery_xml;
+  bool save_host_xml;
+  const char *session_id;
 } cmaper_scan_artifact_policy_t;
 
 cmaper_err_t cmaper_scan_artifact_save_discovery_xml(
     const cmaper_runtime_paths_t *paths,
-    const cmaper_scan_artifact_policy_t *policy,
-    const char *xml_data,
-    size_t xml_size,
-    char *out_path,
-    size_t out_path_cap
-);
+    const cmaper_scan_artifact_policy_t *policy, const char *xml_data,
+    size_t xml_size, char *out_path, size_t out_path_cap);
 
 cmaper_err_t cmaper_scan_artifact_save_discovery_xml_file(
     const cmaper_runtime_paths_t *paths,
-    const cmaper_scan_artifact_policy_t *policy,
-    const char *source_path,
-    char *out_path,
-    size_t out_path_cap
-);
+    const cmaper_scan_artifact_policy_t *policy, const char *source_path,
+    char *out_path, size_t out_path_cap);
 
 cmaper_err_t cmaper_scan_artifact_save_host_xml(
     const cmaper_runtime_paths_t *paths,
-    const cmaper_scan_artifact_policy_t *policy,
-    const char *host_ip,
-    const char *xml_data,
-    size_t xml_size,
-    char *out_path,
-    size_t out_path_cap
-);
+    const cmaper_scan_artifact_policy_t *policy, const char *host_ip,
+    const char *xml_data, size_t xml_size, char *out_path, size_t out_path_cap);
 
 cmaper_err_t cmaper_scan_artifact_save_host_xml_file(
     const cmaper_runtime_paths_t *paths,
-    const cmaper_scan_artifact_policy_t *policy,
-    const char *host_ip,
-    const char *source_path,
-    char *out_path,
-    size_t out_path_cap
-);
+    const cmaper_scan_artifact_policy_t *policy, const char *host_ip,
+    const char *source_path, char *out_path, size_t out_path_cap);
 
 #endif

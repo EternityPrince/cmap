@@ -7,11 +7,9 @@
 #include "cmaper/core/log.h"
 #include "cmaper/snapshot/internal/merge_internal.h"
 
-cmaper_err_t cmaper_snapshot_persist_merged_host(
-    sqlite3 *db,
-    sqlite3_int64 session_id,
-    const cmaper_snapshot_merged_host_t *merged,
-    cmaper_logger_t *logger
-);
+cmaper_err_t
+cmaper_snapshot_persist_merged_host(sqlite3 *db, sqlite3_int64 session_id,
+                                    const cmaper_snapshot_merged_host_t *merged,
+                                    cmaper_logger_t *logger);
 
 #endif

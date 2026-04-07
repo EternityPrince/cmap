@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/scan/options.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''string.h'' file not found'
+      FilePath:        'src/scan/options.c'
+      FileOffset:      63
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/scan/options.c'
+          FileOffset:      63
+          Length:          10
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

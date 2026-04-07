@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/scan/detail_targets.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''stdio.h'' file not found'
+      FilePath:        'src/scan/detail_targets.c'
+      FileOffset:      70
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/scan/detail_targets.c'
+          FileOffset:      70
+          Length:          9
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

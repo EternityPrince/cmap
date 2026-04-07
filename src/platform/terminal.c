@@ -14,32 +14,32 @@
 #endif
 
 bool cmaper_terminal_is_tty(FILE *stream) {
-    if (stream == NULL) {
-        return false;
-    }
+  if (stream == NULL) {
+    return false;
+  }
 
-    return CMAPER_ISATTY(CMAPER_FILENO(stream)) == 1;
+  return CMAPER_ISATTY(CMAPER_FILENO(stream)) == 1;
 }
 
 bool cmaper_terminal_supports_color(FILE *stream) {
-    const char *no_color = getenv("NO_COLOR");
-    const char *term = getenv("TERM");
+  const char *no_color = getenv("NO_COLOR");
+  const char *term = getenv("TERM");
 
-    if (!cmaper_terminal_is_tty(stream)) {
-        return false;
-    }
+  if (!cmaper_terminal_is_tty(stream)) {
+    return false;
+  }
 
-    if (no_color != NULL && no_color[0] != '\0') {
-        return false;
-    }
+  if (no_color != NULL && no_color[0] != '\0') {
+    return false;
+  }
 
-    if (term == NULL || term[0] == '\0') {
-        return false;
-    }
+  if (term == NULL || term[0] == '\0') {
+    return false;
+  }
 
-    if (strcmp(term, "dumb") == 0) {
-        return false;
-    }
+  if (strcmp(term, "dumb") == 0) {
+    return false;
+  }
 
-    return true;
+  return true;
 }

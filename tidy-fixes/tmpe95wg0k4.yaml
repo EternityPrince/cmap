@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/preflight/check.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''stdio.h'' file not found'
+      FilePath:        'include/cmaper/preflight/check.h'
+      FileOffset:      97
+      Replacements:    []
+      Ranges:
+        - FilePath:        'include/cmaper/preflight/check.h'
+          FileOffset:      97
+          Length:          9
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

@@ -1,4 +1,4 @@
 CompileFlags:
-  CompilationDatabase: build-clangd
+  CompilationDatabase: Ancestors
   Add:
     - -Iinclude

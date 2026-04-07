@@ -1,4 +1,5 @@
 src/app/app.c
+src/app/app_errors.c
 src/cli/config.c
 src/cli/diagnostic.c
 src/cli/help.c

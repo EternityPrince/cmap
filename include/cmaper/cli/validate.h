@@ -5,9 +5,7 @@
 #include "cmaper/cli/diagnostic.h"
 #include "cmaper/core/error.h"
 
-cmaper_err_t cmaper_cli_validate_config(
-    const cmaper_cli_config_t *config,
-    cmaper_cli_diagnostic_t *diag
-);
+cmaper_err_t cmaper_cli_validate_config(const cmaper_cli_config_t *config,
+                                        cmaper_cli_diagnostic_t *diag);
 
 #endif

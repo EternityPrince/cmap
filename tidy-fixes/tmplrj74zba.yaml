@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/cli/diagnostic.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''stdio.h'' file not found'
+      FilePath:        'src/cli/diagnostic.c'
+      FileOffset:      45
+      Replacements:    []
+      Ranges:
+        - FilePath:        'src/cli/diagnostic.c'
+          FileOffset:      45
+          Length:          9
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...

@@ -9,12 +9,13 @@
 #include "cmaper/runtime/paths.h"
 
 typedef struct {
-    const cmaper_cli_config_t *config;
-    const cmaper_runtime_paths_t *paths;
-    cmaper_logger_t *logger;
-    FILE *report_stream;
+  const cmaper_cli_config_t *config;
+  const cmaper_runtime_paths_t *paths;
+  cmaper_logger_t *logger;
+  FILE *report_stream;
 } cmaper_history_service_request_t;
 
-cmaper_err_t cmaper_history_service_run(const cmaper_history_service_request_t *request);
+cmaper_err_t
+cmaper_history_service_run(const cmaper_history_service_request_t *request);
 
 #endif

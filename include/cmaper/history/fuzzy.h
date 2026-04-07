@@ -6,9 +6,11 @@
 
 #include "cmaper/history/domain.h"
 
-void cmaper_history_normalize_token(const char *value, char *out, size_t out_cap);
+void cmaper_history_normalize_token(const char *value, char *out,
+                                    size_t out_cap);
 void cmaper_history_normalize_mac(const char *value, char *out, size_t out_cap);
-void cmaper_history_make_fuzzy_key(const char *value, char *out, size_t out_cap);
+void cmaper_history_make_fuzzy_key(const char *value, char *out,
+                                   size_t out_cap);
 bool cmaper_history_fuzzy_equal(const char *left, const char *right);
 bool cmaper_history_fuzzy_contains(const char *haystack, const char *needle);
 int cmaper_history_compare_ip(const char *left, const char *right);

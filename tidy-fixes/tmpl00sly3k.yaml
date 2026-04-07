@@ -1,0 +1,16 @@
+---
+MainSourceFile:  '/Users/vladimirkasterin/clng/cmaper/src/snapshot/store.c'
+Diagnostics:
+  - DiagnosticName:  clang-diagnostic-error
+    DiagnosticMessage:
+      Message:         '''sqlite3.h'' file not found'
+      FilePath:        'include/cmaper/snapshot/store.h'
+      FileOffset:      116
+      Replacements:    []
+      Ranges:
+        - FilePath:        'include/cmaper/snapshot/store.h'
+          FileOffset:      116
+          Length:          11
+    Level:           Error
+    BuildDirectory:  '/Users/vladimirkasterin/clng/cmaper'
+...
